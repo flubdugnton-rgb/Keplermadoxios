@@ -1,6 +1,6 @@
-# Kepleræ iOS 1.3
+# Kepleræ iOS 1.4
 
-Versão 1.3 do Kepleræ para iOS 27 em SwiftUI.
+Versão 1.4 do Kepleræ para iOS 27 em SwiftUI.
 
 ## Correções principais
 
@@ -33,8 +33,19 @@ Total: **1.022** materiais.
 ## Build
 
 - Bundle ID: `com.aistudio.keplerae.stdy.ios`
-- Versão: 1.3
+- Versão: 1.4
 - Build: 4
 - Target mínimo: iOS 27
 - Swift 6
 - GoogleSignIn 10.0.0
+
+
+## Correções 1.4
+
+- player de aulas/PDFs/áudios usa a sessão Google já conectada e a API Drive, sem um segundo login web;
+- escopo de leitura do Drive solicitado pelo SDK oficial quando necessário;
+- barra principal migrada para `TabView` nativo do iOS 27 para recuperar o Liquid Glass e a transição nativa entre abas;
+- Pomodoro: linha de pesca animada com estrela na ponta;
+- Pomodoro: brilho percorre o anel de Saturno em vez do aro externo artificial;
+- sons ambientes acessíveis também na tela de foco e reprodução configurada para ser audível com o modo silencioso do iPhone;
+- conteúdo protegido continua sendo baixado com token OAuth e exibido em player/PDF nativos.

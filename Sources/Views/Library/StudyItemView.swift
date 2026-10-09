@@ -10,8 +10,8 @@ struct StudyItemView: View {
         ZStack {
             AmbientBackground(style: .library)
             VStack(spacing: 12) {
-                if let url = item.previewURL {
-                    DrivePlayerView(url: url)
+                if item.linkKind == .file, !item.driveFileID.isEmpty {
+                    DrivePlayerView(item: item)
                         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                         .kepleraeGlass(intensity: intensity, cornerRadius: 24, interactive: false)
                 } else {

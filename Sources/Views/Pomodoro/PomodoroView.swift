@@ -11,7 +11,7 @@ enum PomodoroTab: String, CaseIterable, Identifiable {
 struct PomodoroView: View {
     @EnvironmentObject private var store: PomodoroStore
     @AppStorage("glassIntensityPercent") private var glassIntensityPercent = 85
-    @AppStorage("pomodoroAmbientEnabled") private var ambientEnabled = false
+    @AppStorage("pomodoroAmbientEnabled") private var ambientEnabled = true
     @AppStorage("pomodoroAmbientVolume") private var ambientVolume = 0.35
     @AppStorage("pomodoroAmbientSound") private var ambientSoundRaw = AmbientSound.rain.rawValue
 
@@ -111,6 +111,8 @@ struct PomodoroView: View {
                 }
             }
             .padding(.top, 2)
+
+            ambientQuickControl
 
             Text("Só focos completos entram no total. Pular ou zerar não registra um pomodoro.")
                 .font(.caption)
@@ -314,8 +316,49 @@ struct PomodoroView: View {
         )
     }
 
+    private var ambientQuickControl: some View {
+        HStack(spacing: 10) {
+            Menu {
+                ForEach(AmbientSound.allCases.filter { $0 != .none }) { sound in
+                    Button {
+                        ambientSoundRaw = sound.rawValue
+                        ambientEnabled = true
+                        soundPlayer.play(sound, volume: ambientVolume)
+                    } label: {
+                        Label(sound.title, systemImage: sound.icon)
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: ambientSound.icon)
+                    Text(ambientSound.title)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.capsule)
+
+            Button {
+                ambientEnabled.toggle()
+                syncAmbient()
+            } label: {
+                Image(systemName: ambientEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .tint(ambientEnabled ? .purple : .secondary)
+        }
+        .font(.subheadline.weight(.semibold))
+        .accessibilityElement(children: .contain)
+    }
+
     private func syncAmbient() {
-        let shouldPlay = ambientEnabled && ambientSound != .none && (store.running || tab == .settings)
+        let shouldPlay = ambientEnabled && ambientSound != .none && (store.running || tab == .focus || tab == .settings)
 
         if shouldPlay {
             soundPlayer.play(ambientSound, volume: ambientVolume)
@@ -328,7 +371,6 @@ struct PomodoroView: View {
 private struct AnimatedPomodoroArtwork: View {
     let active: Bool
     @State private var floating = false
-    @State private var orbit = false
     @State private var sparkle = false
 
     var body: some View {
@@ -340,34 +382,20 @@ private struct AnimatedPomodoroArtwork: View {
                     .resizable()
                     .scaledToFit()
                     .transition(.opacity.combined(with: .scale(scale: 0.97)))
-                    .rotationEffect(.degrees(floating ? 0.7 : -0.7))
-                    .offset(y: floating ? -5 : 6)
+                    .rotationEffect(.degrees(floating ? 0.55 : -0.55))
+                    .offset(y: floating ? -4 : 5)
+                    .overlay {
+                        FishingLineAnimation()
+                    }
             } else {
-                Ellipse()
-                    .trim(from: 0.06, to: 0.88)
-                    .stroke(
-                        AngularGradient(colors: [.clear, .purple.opacity(0.45), .cyan.opacity(0.70), .clear], center: .center),
-                        style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
-                    )
-                    .frame(width: 296, height: 82)
-                    .rotationEffect(.degrees(orbit ? 360 : 0))
-                    .opacity(0.72)
-
                 Image("PomodoroRest")
                     .resizable()
                     .scaledToFit()
                     .transition(.opacity.combined(with: .scale(scale: 1.02)))
-                    .offset(y: floating ? -4 : 5)
-
-                Ellipse()
-                    .trim(from: 0.56, to: 0.88)
-                    .stroke(
-                        LinearGradient(colors: [.cyan.opacity(0.75), .purple.opacity(0.50)], startPoint: .leading, endPoint: .trailing),
-                        style: StrokeStyle(lineWidth: 3.1, lineCap: .round)
-                    )
-                    .frame(width: 296, height: 82)
-                    .rotationEffect(.degrees(orbit ? 360 : 0))
-                    .opacity(0.62)
+                    .offset(y: floating ? -3 : 4)
+                    .overlay {
+                        SaturnRingShimmer()
+                    }
 
                 Image(systemName: "sparkles")
                     .font(.system(size: 18, weight: .semibold))
@@ -379,11 +407,9 @@ private struct AnimatedPomodoroArtwork: View {
         }
         .animation(.easeInOut(duration: 0.45), value: active)
         .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: floating)
-        .animation(.linear(duration: 7.0).repeatForever(autoreverses: false), value: orbit)
         .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: sparkle)
         .onAppear {
             floating = true
-            orbit = true
             sparkle = true
         }
     }
@@ -404,6 +430,85 @@ private struct AnimatedPomodoroArtwork: View {
                         .easeInOut(duration: 0.75 + Double(index) * 0.11).repeatForever(autoreverses: true),
                         value: sparkle
                     )
+            }
+        }
+    }
+}
+
+private struct FishingLineAnimation: View {
+    @State private var lowered = false
+    @State private var starPulse = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+            let start = CGPoint(x: width * 0.742, y: height * 0.10)
+            let endY = height * (lowered ? 0.63 : 0.42)
+            let end = CGPoint(x: width * 0.758, y: endY)
+
+            ZStack(alignment: .topLeading) {
+                Path { path in
+                    path.move(to: start)
+                    path.addQuadCurve(
+                        to: end,
+                        control: CGPoint(x: width * 0.80, y: height * 0.30)
+                    )
+                }
+                .stroke(
+                    LinearGradient(colors: [.white.opacity(0.95), .cyan.opacity(0.85)], startPoint: .top, endPoint: .bottom),
+                    style: StrokeStyle(lineWidth: 1.8, lineCap: .round)
+                )
+                .shadow(color: .cyan.opacity(0.6), radius: 3)
+
+                Image(systemName: "star.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.yellow)
+                    .shadow(color: .yellow.opacity(0.8), radius: 5)
+                    .scaleEffect(starPulse ? 1.18 : 0.82)
+                    .position(end)
+            }
+        }
+        .allowsHitTesting(false)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.55).repeatForever(autoreverses: true)) {
+                lowered = true
+            }
+            withAnimation(.easeInOut(duration: 0.75).repeatForever(autoreverses: true)) {
+                starPulse = true
+            }
+        }
+    }
+}
+
+private struct SaturnRingShimmer: View {
+    @State private var travel = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+
+            Ellipse()
+                .trim(from: travel ? 0.69 : 0.04, to: travel ? 0.91 : 0.26)
+                .stroke(
+                    LinearGradient(
+                        colors: [.clear, .white.opacity(0.95), .cyan.opacity(0.75), .purple.opacity(0.55), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    style: StrokeStyle(lineWidth: max(2.5, height * 0.018), lineCap: .round)
+                )
+                .frame(width: width * 0.82, height: height * 0.31)
+                .rotationEffect(.degrees(-8))
+                .position(x: width * 0.53, y: height * 0.64)
+                .blendMode(.screen)
+                .shadow(color: .cyan.opacity(0.35), radius: 4)
+        }
+        .allowsHitTesting(false)
+        .onAppear {
+            withAnimation(.linear(duration: 2.4).repeatForever(autoreverses: false)) {
+                travel = true
             }
         }
     }

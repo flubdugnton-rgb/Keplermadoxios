@@ -12,6 +12,7 @@ final class GoogleAuthStore: ObservableObject {
     @Published var errorMessage: String?
 
     private let driveFileScope = "https://www.googleapis.com/auth/drive.file"
+    private let driveReadScope = "https://www.googleapis.com/auth/drive.readonly"
     private let googleCanceledErrorCode = -5
 
     init() {
@@ -36,7 +37,7 @@ final class GoogleAuthStore: ObservableObject {
                 let result = try await GIDSignIn.sharedInstance.signIn(
                     withPresenting: rootViewController,
                     hint: nil,
-                    additionalScopes: [driveFileScope]
+                    additionalScopes: [driveFileScope, driveReadScope]
                 )
 
                 apply(result.user)
@@ -70,6 +71,70 @@ final class GoogleAuthStore: ObservableObject {
 
     func handle(_ url: URL) -> Bool {
         GIDSignIn.sharedInstance.handle(url)
+    }
+
+    /// Returns a fresh OAuth access token that can read the Drive catalog files.
+    /// Existing sessions created before 1.4 receive the Drive read scope through
+    /// Google's consent flow once, instead of showing a second Drive login page.
+    func freshDriveAccessToken() async throws -> String {
+        guard let currentUser = GIDSignIn.sharedInstance.currentUser else {
+            throw GoogleDriveAuthError.noGoogleSession
+        }
+
+        let scopes = Set(currentUser.grantedScopes ?? [])
+        if scopes.contains(driveReadScope) {
+            return try await refreshToken(for: currentUser)
+        }
+
+        guard let rootViewController = Self.rootViewController() else {
+            throw GoogleDriveAuthError.noPresentingViewController
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            currentUser.addScopes([driveReadScope], presenting: rootViewController) { result, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let scopedUser = result?.user else {
+                    continuation.resume(throwing: GoogleDriveAuthError.scopeNotGranted)
+                    return
+                }
+
+                scopedUser.refreshTokensIfNeeded { refreshedUser, refreshError in
+                    if let refreshError {
+                        continuation.resume(throwing: refreshError)
+                        return
+                    }
+
+                    guard let token = refreshedUser?.accessToken.tokenString, !token.isEmpty else {
+                        continuation.resume(throwing: GoogleDriveAuthError.missingAccessToken)
+                        return
+                    }
+
+                    continuation.resume(returning: token)
+                }
+            }
+        }
+    }
+
+    private func refreshToken(for user: GIDGoogleUser) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            user.refreshTokensIfNeeded { refreshedUser, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let token = refreshedUser?.accessToken.tokenString, !token.isEmpty else {
+                    continuation.resume(throwing: GoogleDriveAuthError.missingAccessToken)
+                    return
+                }
+
+                continuation.resume(returning: token)
+            }
+        }
     }
 
     private func restorePreviousSignIn() {
@@ -138,5 +203,25 @@ final class GoogleAuthStore: ObservableObject {
         }
 
         return top
+    }
+}
+
+enum GoogleDriveAuthError: LocalizedError {
+    case noGoogleSession
+    case noPresentingViewController
+    case scopeNotGranted
+    case missingAccessToken
+
+    var errorDescription: String? {
+        switch self {
+        case .noGoogleSession:
+            return "Sua sessão do Google expirou. Entre novamente no Kepleræ."
+        case .noPresentingViewController:
+            return "Não foi possível abrir a autorização do Google Drive."
+        case .scopeNotGranted:
+            return "O acesso de leitura ao Google Drive não foi autorizado."
+        case .missingAccessToken:
+            return "O Google não forneceu um token de acesso válido."
+        }
     }
 }

@@ -22,7 +22,7 @@ final class AmbientSoundPlayer: ObservableObject {
         }
 
         do {
-            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
 
             let player = try AVAudioPlayer(contentsOf: url)

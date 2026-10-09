@@ -1,7 +1,7 @@
 import SwiftUI
 
-enum MainDestination: String, CaseIterable, Identifiable {
-    case home, subjects, pomodoro, questions, notes
+enum MainDestination: String, CaseIterable, Identifiable, Hashable {
+    case home, subjects, pomodoro, questions, notes, profile
 
     var id: String { rawValue }
 
@@ -12,6 +12,7 @@ enum MainDestination: String, CaseIterable, Identifiable {
         case .pomodoro: return "Pomodoro"
         case .questions: return "Questões"
         case .notes: return "Notas"
+        case .profile: return "Perfil"
         }
     }
 
@@ -22,16 +23,7 @@ enum MainDestination: String, CaseIterable, Identifiable {
         case .pomodoro: return "timer"
         case .questions: return "questionmark.square"
         case .notes: return "note.text"
-        }
-    }
-
-    var selectedIcon: String {
-        switch self {
-        case .home: return "house.fill"
-        case .subjects: return "square.grid.2x2.fill"
-        case .pomodoro: return "timer"
-        case .questions: return "questionmark.square.fill"
-        case .notes: return "note.text"
+        case .profile: return "person.crop.circle"
         }
     }
 }
@@ -39,12 +31,11 @@ enum MainDestination: String, CaseIterable, Identifiable {
 struct RootView: View {
     @EnvironmentObject private var auth: GoogleAuthStore
     @State private var selection: MainDestination = .home
+    @State private var lastContentSelection: MainDestination = .home
     @State private var showProfile = false
     @State private var homeResetID = UUID()
     @AppStorage("appTheme") private var appThemeRaw = AppTheme.system.rawValue
-    @AppStorage("glassIntensityPercent") private var glassIntensityPercent = 85
 
-    private var intensity: Double { Double(glassIntensityPercent) / 100 }
     private var theme: AppTheme { AppTheme(rawValue: appThemeRaw) ?? .system }
     private var preferredScheme: ColorScheme? {
         switch theme {
@@ -69,115 +60,58 @@ struct RootView: View {
     }
 
     private var mainShell: some View {
-        Group {
-            switch selection {
-            case .home:
+        TabView(selection: $selection) {
+            Tab("Início", systemImage: "house", value: MainDestination.home) {
                 HomeView(resetID: homeResetID, onOpenSubjects: { selection = .subjects })
-            case .subjects:
+            }
+
+            Tab("Biblioteca", systemImage: "square.grid.2x2", value: MainDestination.subjects) {
                 LibraryView()
-            case .pomodoro:
+            }
+
+            Tab("Pomodoro", systemImage: "timer", value: MainDestination.pomodoro) {
                 PomodoroView()
-            case .questions:
+            }
+
+            Tab("Questões", systemImage: "questionmark.square", value: MainDestination.questions) {
                 QuestionsView()
-            case .notes:
+            }
+
+            Tab("Notas", systemImage: "note.text", value: MainDestination.notes) {
                 NotesView()
             }
+
+            Tab(value: MainDestination.profile) {
+                Color.clear
+                    .ignoresSafeArea()
+            } label: {
+                AvatarView(photoURL: auth.photoURL)
+                    .frame(width: 30, height: 30)
+                    .accessibilityLabel("Perfil")
+            }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            BottomNavigation(
-                selection: $selection,
-                showProfile: $showProfile,
-                intensity: intensity,
-                onReselect: { destination in
-                    if destination == .home {
-                        homeResetID = UUID()
-                    }
-                }
-            )
-            .padding(.horizontal, 12)
-            .padding(.bottom, 4)
+        .tint(.accentColor)
+        .onChange(of: selection) { oldValue, newValue in
+            if newValue == .profile {
+                showProfile = true
+                return
+            }
+
+            lastContentSelection = newValue
+
+            if newValue == .home && oldValue != .home {
+                homeResetID = UUID()
+            }
         }
-        .sheet(isPresented: $showProfile) {
+        .sheet(isPresented: $showProfile, onDismiss: {
+            if selection == .profile {
+                selection = lastContentSelection
+            }
+        }) {
             ProfileSettingsView()
                 .preferredColorScheme(preferredScheme)
                 .presentationDragIndicator(.visible)
         }
-    }
-}
-
-private struct BottomNavigation: View {
-    @EnvironmentObject private var auth: GoogleAuthStore
-    @Binding var selection: MainDestination
-    @Binding var showProfile: Bool
-    let intensity: Double
-    let onReselect: (MainDestination) -> Void
-
-    var body: some View {
-        HStack(spacing: 2) {
-            ForEach(MainDestination.allCases) { destination in
-                Button {
-                    if selection == destination {
-                        onReselect(destination)
-                    } else {
-                        withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
-                            selection = destination
-                        }
-                    }
-                } label: {
-                    ZStack {
-                        if selection == destination {
-                            Capsule(style: .continuous)
-                                .fill(Color.accentColor.opacity(0.10 + 0.05 * intensity))
-                                .overlay {
-                                    Capsule(style: .continuous)
-                                        .stroke(Color.white.opacity(0.16 + 0.16 * intensity), lineWidth: 0.7)
-                                }
-                                .padding(.horizontal, 2)
-                                .padding(.vertical, 2)
-                                .transition(.opacity.combined(with: .scale(scale: 0.96)))
-                        }
-
-                        VStack(spacing: 2) {
-                            Image(systemName: selection == destination ? destination.selectedIcon : destination.icon)
-                                .font(.system(size: 19, weight: .semibold))
-                                .contentTransition(.symbolEffect(.replace))
-                            Text(destination.title)
-                                .font(.system(size: 9.2, weight: .medium))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                        }
-                        .foregroundStyle(selection == destination ? Color.accentColor : .primary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-
-            Button {
-                showProfile = true
-            } label: {
-                AvatarView(photoURL: auth.photoURL)
-                    .frame(width: 38, height: 38)
-                    .padding(.horizontal, 5)
-                    .frame(height: 50)
-                    .contentShape(Rectangle())
-                    .accessibilityLabel("Abrir perfil e configurações")
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 5)
-        .frame(height: 62)
-        .glassEffect(.regular.interactive(), in: Capsule(style: .continuous))
-        .overlay {
-            Capsule(style: .continuous)
-                .stroke(Color.white.opacity(0.10 + 0.20 * intensity), lineWidth: 0.8)
-                .allowsHitTesting(false)
-        }
-        .shadow(color: .black.opacity(0.08), radius: 12, y: 5)
-        .fixedSize(horizontal: false, vertical: true)
     }
 }
 

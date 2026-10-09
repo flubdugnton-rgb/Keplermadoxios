@@ -6,6 +6,8 @@ for path in \
   Sources/App/KepleraeApp.swift \
   Sources/App/RootView.swift \
   Sources/Auth/GoogleAuthStore.swift \
+  Sources/Data/DriveContentLoader.swift \
+  Sources/Views/Player/DrivePlayerView.swift \
   Sources/Views/Auth/LoginView.swift \
   Sources/Views/Pomodoro/PomodoroView.swift \
   Sources/Views/Questions/QuestionsView.swift \
@@ -48,4 +50,4 @@ assert Counter(x['subjectId'] for x in data)==Counter({
 print('Catálogo: 1.022 itens (703 aulas, 306 PDFs, 13 áudios)')
 PY
 
-echo "Estrutura Kepleræ 1.3 validada."
+echo "Estrutura Kepleræ 1.4 validada."
