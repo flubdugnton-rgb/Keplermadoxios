@@ -1,18 +1,14 @@
 #!/bin/bash
 set -euo pipefail
-
-required=(
-  project.yml
-  Sources/App/KepleraeApp.swift
-  Sources/App/RootView.swift
-  Sources/Design/GlassStyle.swift
-  Sources/Data/CatalogStore.swift
-  Sources/Views/Home/HomeView.swift
-  Sources/Views/Settings/SettingsView.swift
-)
-
-for file in "${required[@]}"; do
-  test -f "$file" || { echo "Arquivo ausente: $file"; exit 1; }
+for path in project.yml Sources/App/KepleraeApp.swift Sources/App/RootView.swift Sources/Views/Pomodoro/PomodoroView.swift Sources/Views/Questions/QuestionsView.swift Sources/Views/Notes/NotesView.swift Sources/Views/Profile/ProfileSettingsView.swift Resources/catalog.json Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png; do
+  test -e "$path" || { echo "Faltando: $path"; exit 1; }
 done
-
-echo "Estrutura do projeto OK."
+python3 - <<'PY'
+import json
+from pathlib import Path
+p=Path('Resources/catalog.json')
+data=json.loads(p.read_text(encoding='utf-8'))
+assert isinstance(data,list) and len(data)>=1000, 'catálogo incompleto'
+print('Catálogo:',len(data),'itens')
+PY
+echo "Estrutura Kepleræ 1.1 validada."

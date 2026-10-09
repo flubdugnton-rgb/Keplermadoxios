@@ -12,12 +12,14 @@ targets:
     platform: iOS
     sources:
       - Sources
+    resources:
+      - Resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.aistudio.keplerae.stdy.ios
         PRODUCT_NAME: Keplerae
-        MARKETING_VERSION: 1.0
-        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 1.1
+        CURRENT_PROJECT_VERSION: 2
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "Kepleræ"
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
@@ -25,5 +27,6 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGN_STYLE: Automatic
         SUPPORTS_MACCATALYST: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     scheme:
       testTargets: []
