@@ -41,8 +41,8 @@ final class GoogleAuthStore: ObservableObject {
             } catch {
                 isLoading = false
                 let nsError = error as NSError
-                if nsError.domain == GIDSignInErrorDomain,
-                   nsError.code == GIDSignInError.canceled.rawValue {
+                if nsError.domain == kGIDSignInErrorDomain,
+                   nsError.code == GIDSignInErrorCode.canceled.rawValue {
                     return
                 }
                 errorMessage = error.localizedDescription
