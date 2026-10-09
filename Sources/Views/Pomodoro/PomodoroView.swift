@@ -370,147 +370,21 @@ struct PomodoroView: View {
 
 private struct AnimatedPomodoroArtwork: View {
     let active: Bool
-    @State private var floating = false
-    @State private var sparkle = false
 
     var body: some View {
         ZStack {
             if active {
-                activeStars
-
-                Image("PomodoroFishing")
-                    .resizable()
-                    .scaledToFit()
-                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
-                    .rotationEffect(.degrees(floating ? 0.55 : -0.55))
-                    .offset(y: floating ? -4 : 5)
-                    .overlay {
-                        FishingLineAnimation()
-                    }
+                AnimatedGIFView(resourceName: "pomodoro_fishing")
+                    .id("pomodoro-fishing")
+                    .transition(.opacity.combined(with: .scale(scale: 0.985)))
             } else {
-                Image("PomodoroRest")
-                    .resizable()
-                    .scaledToFit()
-                    .transition(.opacity.combined(with: .scale(scale: 1.02)))
-                    .offset(y: floating ? -3 : 4)
-                    .overlay {
-                        SaturnRingShimmer()
-                    }
-
-                Image(systemName: "sparkles")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.yellow)
-                    .offset(x: 86, y: -58)
-                    .scaleEffect(sparkle ? 1.25 : 0.72)
-                    .opacity(sparkle ? 1 : 0.45)
+                AnimatedGIFView(resourceName: "pomodoro_rest")
+                    .id("pomodoro-rest")
+                    .transition(.opacity.combined(with: .scale(scale: 1.015)))
             }
         }
-        .animation(.easeInOut(duration: 0.45), value: active)
-        .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: floating)
-        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: sparkle)
-        .onAppear {
-            floating = true
-            sparkle = true
-        }
-    }
-
-    private var activeStars: some View {
-        ZStack {
-            ForEach(0..<7, id: \.self) { index in
-                Image(systemName: index.isMultiple(of: 2) ? "star.fill" : "sparkle")
-                    .font(.system(size: CGFloat(8 + (index % 3) * 3), weight: .semibold))
-                    .foregroundStyle(index.isMultiple(of: 2) ? Color.yellow : Color.cyan)
-                    .opacity(sparkle ? 0.95 : 0.32)
-                    .scaleEffect(sparkle ? 1.08 : 0.74)
-                    .offset(
-                        x: CGFloat([-104, -74, -30, 34, 70, 100, 118][index]),
-                        y: CGFloat([46, -52, 70, -72, 32, -20, 68][index]) + (floating ? -5 : 5)
-                    )
-                    .animation(
-                        .easeInOut(duration: 0.75 + Double(index) * 0.11).repeatForever(autoreverses: true),
-                        value: sparkle
-                    )
-            }
-        }
-    }
-}
-
-private struct FishingLineAnimation: View {
-    @State private var lowered = false
-    @State private var starPulse = false
-
-    var body: some View {
-        GeometryReader { proxy in
-            let width = proxy.size.width
-            let height = proxy.size.height
-            let start = CGPoint(x: width * 0.742, y: height * 0.10)
-            let endY = height * (lowered ? 0.63 : 0.42)
-            let end = CGPoint(x: width * 0.758, y: endY)
-
-            ZStack(alignment: .topLeading) {
-                Path { path in
-                    path.move(to: start)
-                    path.addQuadCurve(
-                        to: end,
-                        control: CGPoint(x: width * 0.80, y: height * 0.30)
-                    )
-                }
-                .stroke(
-                    LinearGradient(colors: [.white.opacity(0.95), .cyan.opacity(0.85)], startPoint: .top, endPoint: .bottom),
-                    style: StrokeStyle(lineWidth: 1.8, lineCap: .round)
-                )
-                .shadow(color: .cyan.opacity(0.6), radius: 3)
-
-                Image(systemName: "star.fill")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.yellow)
-                    .shadow(color: .yellow.opacity(0.8), radius: 5)
-                    .scaleEffect(starPulse ? 1.18 : 0.82)
-                    .position(end)
-            }
-        }
-        .allowsHitTesting(false)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.55).repeatForever(autoreverses: true)) {
-                lowered = true
-            }
-            withAnimation(.easeInOut(duration: 0.75).repeatForever(autoreverses: true)) {
-                starPulse = true
-            }
-        }
-    }
-}
-
-private struct SaturnRingShimmer: View {
-    @State private var travel = false
-
-    var body: some View {
-        GeometryReader { proxy in
-            let width = proxy.size.width
-            let height = proxy.size.height
-
-            Ellipse()
-                .trim(from: travel ? 0.69 : 0.04, to: travel ? 0.91 : 0.26)
-                .stroke(
-                    LinearGradient(
-                        colors: [.clear, .white.opacity(0.95), .cyan.opacity(0.75), .purple.opacity(0.55), .clear],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    style: StrokeStyle(lineWidth: max(2.5, height * 0.018), lineCap: .round)
-                )
-                .frame(width: width * 0.82, height: height * 0.31)
-                .rotationEffect(.degrees(-8))
-                .position(x: width * 0.53, y: height * 0.64)
-                .blendMode(.screen)
-                .shadow(color: .cyan.opacity(0.35), radius: 4)
-        }
-        .allowsHitTesting(false)
-        .onAppear {
-            withAnimation(.linear(duration: 2.4).repeatForever(autoreverses: false)) {
-                travel = true
-            }
-        }
+        .animation(.easeInOut(duration: 0.35), value: active)
+        .accessibilityHidden(true)
     }
 }
 

@@ -7,10 +7,26 @@ final class AmbientSoundPlayer: ObservableObject {
     @Published private(set) var lastError: String?
 
     private var player: AVAudioPlayer?
+    private var currentSound: AmbientSound = .none
 
     func play(_ sound: AmbientSound, volume: Double) {
+        guard sound != .none else {
+            stop()
+            return
+        }
+
+        if currentSound == sound, let player {
+            player.volume = Float(min(max(volume, 0), 1))
+            if !player.isPlaying {
+                isPlaying = player.play()
+            } else {
+                isPlaying = true
+            }
+            lastError = isPlaying ? nil : "Não foi possível iniciar \(sound.title)."
+            return
+        }
+
         stop()
-        guard sound != .none else { return }
 
         let url = Bundle.main.url(forResource: sound.resourceName, withExtension: "m4a")
             ?? Bundle.main.url(forResource: sound.resourceName, withExtension: "m4a", subdirectory: "Sounds")
@@ -25,15 +41,18 @@ final class AmbientSoundPlayer: ObservableObject {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
 
-            let player = try AVAudioPlayer(contentsOf: url)
-            player.numberOfLoops = -1
-            player.volume = Float(min(max(volume, 0), 1))
-            player.prepareToPlay()
-            isPlaying = player.play()
-            self.player = player
+            let newPlayer = try AVAudioPlayer(contentsOf: url)
+            newPlayer.numberOfLoops = -1
+            newPlayer.volume = Float(min(max(volume, 0), 1))
+            newPlayer.prepareToPlay()
+
+            currentSound = sound
+            player = newPlayer
+            isPlaying = newPlayer.play()
             lastError = isPlaying ? nil : "Não foi possível iniciar \(sound.title)."
         } catch {
-            self.player = nil
+            player = nil
+            currentSound = .none
             isPlaying = false
             lastError = error.localizedDescription
         }
@@ -46,6 +65,7 @@ final class AmbientSoundPlayer: ObservableObject {
     func stop() {
         player?.stop()
         player = nil
+        currentSound = .none
         isPlaying = false
     }
 }

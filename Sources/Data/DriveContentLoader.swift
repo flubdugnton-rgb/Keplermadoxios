@@ -2,10 +2,15 @@ import Foundation
 
 @MainActor
 final class DriveContentLoader: ObservableObject {
-    enum State {
+    enum PreparedContent: Equatable {
+        case local(URL)
+        case stream(URL)
+    }
+
+    enum State: Equatable {
         case idle
         case loading
-        case ready(URL)
+        case ready(PreparedContent)
         case failed(String)
     }
 
@@ -21,9 +26,18 @@ final class DriveContentLoader: ObservableObject {
             }
 
             let token = try await auth.freshDriveAccessToken()
-            let localURL = try await Self.download(item: item, accessToken: token)
             guard !Task.isCancelled else { return }
-            state = .ready(localURL)
+
+            switch item.type {
+            case .lesson, .audio:
+                let url = try Self.streamingURL(fileID: item.driveFileID, accessToken: token)
+                state = .ready(.stream(url))
+
+            case .pdf:
+                let localURL = try await Self.downloadPDF(item: item, accessToken: token)
+                guard !Task.isCancelled else { return }
+                state = .ready(.local(localURL))
+            }
         } catch is CancellationError {
             return
         } catch {
@@ -35,15 +49,26 @@ final class DriveContentLoader: ObservableObject {
         state = .idle
     }
 
-    nonisolated private static func download(item: StudyItem, accessToken: String) async throws -> URL {
+    nonisolated private static func streamingURL(fileID: String, accessToken: String) throws -> URL {
+        guard var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files/\(fileID)") else {
+            throw DriveContentError.invalidURL
+        }
+        components.queryItems = [
+            URLQueryItem(name: "alt", value: "media"),
+            URLQueryItem(name: "supportsAllDrives", value: "true"),
+            URLQueryItem(name: "access_token", value: accessToken)
+        ]
+        guard let url = components.url else { throw DriveContentError.invalidURL }
+        return url
+    }
+
+    nonisolated private static func downloadPDF(item: StudyItem, accessToken: String) async throws -> URL {
         let fileManager = FileManager.default
-        let directory = fileManager.temporaryDirectory
+        let directory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
             .appendingPathComponent("KepleraeDrive", isDirectory: true)
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let ext = preferredExtension(for: item)
-        let destination = directory.appendingPathComponent("\(item.driveFileID).\(ext)")
-
+        let destination = directory.appendingPathComponent("\(item.driveFileID).pdf")
         if fileManager.fileExists(atPath: destination.path),
            let values = try? destination.resourceValues(forKeys: [.fileSizeKey]),
            (values.fileSize ?? 0) > 0 {
@@ -59,19 +84,22 @@ final class DriveContentLoader: ObservableObject {
         request.httpMethod = "GET"
         request.timeoutInterval = 180
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/octet-stream", forHTTPHeaderField: "Accept")
+        request.setValue("application/pdf", forHTTPHeaderField: "Accept")
+        request.cachePolicy = .reloadRevalidatingCacheData
 
-        let configuration = URLSessionConfiguration.ephemeral
+        let configuration = URLSessionConfiguration.default
+        configuration.urlCache = URLCache(
+            memoryCapacity: 24 * 1024 * 1024,
+            diskCapacity: 256 * 1024 * 1024
+        )
         configuration.timeoutIntervalForRequest = 180
-        configuration.timeoutIntervalForResource = 60 * 60
+        configuration.timeoutIntervalForResource = 60 * 30
         let session = URLSession(configuration: configuration)
 
         let (temporaryURL, response) = try await session.download(for: request)
-
         guard let http = response as? HTTPURLResponse else {
             throw DriveContentError.invalidResponse
         }
-
         guard (200...299).contains(http.statusCode) else {
             throw DriveContentError.httpStatus(http.statusCode)
         }
@@ -81,17 +109,6 @@ final class DriveContentLoader: ObservableObject {
         }
         try fileManager.moveItem(at: temporaryURL, to: destination)
         return destination
-    }
-
-    nonisolated private static func preferredExtension(for item: StudyItem) -> String {
-        let existing = (item.filename as NSString).pathExtension
-        if !existing.isEmpty { return existing }
-
-        switch item.type {
-        case .lesson: return "mp4"
-        case .pdf: return "pdf"
-        case .audio: return "m4a"
-        }
     }
 }
 
@@ -110,16 +127,10 @@ enum DriveContentError: LocalizedError {
         case .invalidResponse:
             return "O Google Drive retornou uma resposta inválida."
         case .httpStatus(let code):
-            if code == 401 {
-                return "A sessão do Google expirou. Tente abrir o material novamente."
-            }
-            if code == 403 {
-                return "Sua conta não tem permissão para ler este arquivo do Google Drive."
-            }
-            if code == 404 {
-                return "O arquivo não foi encontrado no Google Drive."
-            }
-            return "Não foi possível baixar o material do Google Drive (erro \(code))."
+            if code == 401 { return "A sessão do Google expirou. Abra o material novamente." }
+            if code == 403 { return "Sua conta não tem permissão para ler este arquivo do Google Drive." }
+            if code == 404 { return "O arquivo não foi encontrado no Google Drive." }
+            return "Não foi possível carregar o material do Google Drive (erro \(code))."
         }
     }
 }

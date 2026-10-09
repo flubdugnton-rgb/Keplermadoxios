@@ -17,17 +17,17 @@ struct DrivePlayerView: View {
                 VStack(spacing: 14) {
                     ProgressView()
                         .controlSize(.large)
-                    Text("Preparando conteúdo…")
+                    Text(item.type == .lesson ? "Abrindo vídeo…" : "Preparando conteúdo…")
                         .font(.headline)
-                    Text("Usando a conta Google já conectada ao Kepleræ.")
+                    Text(item.type == .lesson ? "O vídeo começa por streaming, sem esperar o download completo." : "Usando a conta Google já conectada ao Kepleræ.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            case .ready(let url):
-                NativeStudyContentView(item: item, localURL: url)
+            case .ready(let content):
+                NativeStudyContentView(item: item, content: content)
 
             case .failed(let message):
                 ContentUnavailableView {
@@ -51,21 +51,70 @@ struct DrivePlayerView: View {
 
 private struct NativeStudyContentView: View {
     let item: StudyItem
-    let localURL: URL
+    let content: DriveContentLoader.PreparedContent
+
+    private var url: URL {
+        switch content {
+        case .local(let url), .stream(let url): return url
+        }
+    }
 
     var body: some View {
         switch item.type {
         case .pdf:
-            PDFDocumentView(url: localURL)
+            PDFReaderView(url: url)
         case .lesson:
-            VideoStudyPlayer(url: localURL)
+            VideoStudyPlayer(url: url)
         case .audio:
-            AudioStudyPlayer(url: localURL, title: item.title)
+            AudioStudyPlayer(url: url, title: item.title)
         }
     }
 }
 
-private struct PDFDocumentView: UIViewRepresentable {
+private struct PDFReaderView: View {
+    let url: URL
+    @State private var showFullscreen = false
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            PDFDocumentCanvas(url: url)
+
+            Button {
+                showFullscreen = true
+            } label: {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 42, height: 42)
+            }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .padding(12)
+            .accessibilityLabel("Abrir PDF em tela cheia")
+        }
+        .fullScreenCover(isPresented: $showFullscreen) {
+            ZStack(alignment: .topTrailing) {
+                Color(uiColor: .systemBackground).ignoresSafeArea()
+                PDFDocumentCanvas(url: url)
+                    .ignoresSafeArea(edges: .bottom)
+
+                Button {
+                    showFullscreen = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 18, weight: .bold))
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.glassProminent)
+                .buttonBorderShape(.circle)
+                .padding(.top, 12)
+                .padding(.trailing, 14)
+                .accessibilityLabel("Fechar tela cheia")
+            }
+        }
+    }
+}
+
+private struct PDFDocumentCanvas: UIViewRepresentable {
     let url: URL
 
     func makeUIView(context: Context) -> PDFView {
@@ -73,6 +122,7 @@ private struct PDFDocumentView: UIViewRepresentable {
         view.autoScales = true
         view.displayMode = .singlePageContinuous
         view.displayDirection = .vertical
+        view.pageShadowsEnabled = true
         view.backgroundColor = .clear
         view.document = PDFDocument(url: url)
         return view
@@ -93,9 +143,13 @@ private struct VideoStudyPlayer: View {
         VideoPlayer(player: player)
             .background(.black)
             .onAppear {
-                if player == nil {
-                    player = AVPlayer(url: url)
-                }
+                guard player == nil else { return }
+                let item = AVPlayerItem(url: url)
+                item.preferredForwardBufferDuration = 2
+                item.preferredPeakBitRate = 0
+                let newPlayer = AVPlayer(playerItem: item)
+                newPlayer.automaticallyWaitsToMinimizeStalling = false
+                player = newPlayer
             }
             .onDisappear {
                 player?.pause()
@@ -113,9 +167,8 @@ private struct AudioStudyPlayer: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-
             Image(systemName: "waveform.circle.fill")
-                .font(.system(size: 92, weight: .regular))
+                .font(.system(size: 92))
                 .foregroundStyle(.purple.gradient)
                 .symbolEffect(.pulse, isActive: isPlaying)
 
@@ -130,11 +183,7 @@ private struct AudioStudyPlayer: View {
 
             Button {
                 guard let player else { return }
-                if isPlaying {
-                    player.pause()
-                } else {
-                    player.play()
-                }
+                if isPlaying { player.pause() } else { player.play() }
                 isPlaying.toggle()
             } label: {
                 Image(systemName: isPlaying ? "pause.fill" : "play.fill")
@@ -144,14 +193,16 @@ private struct AudioStudyPlayer: View {
             .buttonStyle(.glassProminent)
             .buttonBorderShape(.circle)
             .tint(.purple)
-
             Spacer()
         }
         .padding(28)
         .onAppear {
-            if player == nil {
-                player = AVPlayer(url: url)
-            }
+            guard player == nil else { return }
+            let item = AVPlayerItem(url: url)
+            item.preferredForwardBufferDuration = 2
+            let newPlayer = AVPlayer(playerItem: item)
+            newPlayer.automaticallyWaitsToMinimizeStalling = false
+            player = newPlayer
         }
         .onDisappear {
             player?.pause()

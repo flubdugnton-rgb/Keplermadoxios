@@ -6,7 +6,6 @@ struct HomeView: View {
     @EnvironmentObject private var auth: GoogleAuthStore
     @AppStorage("glassIntensityPercent") private var glassIntensityPercent = 85
     let resetID: UUID
-    let onOpenSubjects: () -> Void
 
     private var intensity: Double { Double(glassIntensityPercent) / 100 }
     private var completedCount: Int { studyState.completed.intersection(Set(catalog.items.map(\.id))).count }
@@ -105,9 +104,15 @@ struct HomeView: View {
 
     private var stats: some View {
         HStack(spacing: 12) {
-            StatTile(value: count(.lesson), title: "Aulas", icon: "play.circle.fill", tint: .blue, intensity: intensity)
-            StatTile(value: count(.pdf), title: "PDFs", icon: "doc.text.fill", tint: .purple, intensity: intensity)
-            StatTile(value: count(.audio), title: "Áudios", icon: "headphones", tint: .pink, intensity: intensity)
+            NavigationLink { LibraryView(initialType: .lesson, embedded: true) } label: {
+                StatTile(value: count(.lesson), title: "Aulas", icon: "play.circle.fill", tint: .blue, intensity: intensity)
+            }.buttonStyle(.plain)
+            NavigationLink { LibraryView(initialType: .pdf, embedded: true) } label: {
+                StatTile(value: count(.pdf), title: "PDFs", icon: "doc.text.fill", tint: .purple, intensity: intensity)
+            }.buttonStyle(.plain)
+            NavigationLink { LibraryView(initialType: .audio, embedded: true) } label: {
+                StatTile(value: count(.audio), title: "Áudios", icon: "headphones", tint: .pink, intensity: intensity)
+            }.buttonStyle(.plain)
         }
     }
 
@@ -116,8 +121,12 @@ struct HomeView: View {
             HStack {
                 Text("Suas matérias").font(.title2.bold())
                 Spacer()
-                Button("Ver todas", action: onOpenSubjects)
-                    .font(.subheadline.weight(.semibold))
+                NavigationLink {
+                    LibraryView(embedded: true)
+                } label: {
+                    Text("Ver todas")
+                        .font(.subheadline.weight(.semibold))
+                }
             }
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
