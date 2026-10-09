@@ -1,4 +1,4 @@
-name: Compilar Keplerae iOS 1.3
+name: Compilar Keplerae iOS 1.4
 
 on:
   push:
@@ -60,7 +60,7 @@ jobs:
           APP_PATH="$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d | head -n 1)"
           test -n "$APP_PATH"
           test -f "$APP_PATH/Info.plist"
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist" | grep '^1.3$'
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist" | grep '^1.4$'
 
           test -f "$APP_PATH/Assets.car"
 
@@ -100,20 +100,29 @@ jobs:
           find "$APP_PATH" -maxdepth 2 -type f \( -name 'catalog.json' -o -name 'Assets.car' -o -name 'AppIcon*.png' -o -name 'ambient_*.m4a' \) -print | sort
           echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
 
+          # Garante que a 1.4 usa autenticação Drive via OAuth e player nativo,
+          # sem voltar para o preview web que pedia outro login.
+          grep -q 'drive.readonly' Sources/Auth/GoogleAuthStore.swift
+          grep -q 'www.googleapis.com/drive/v3/files' Sources/Data/DriveContentLoader.swift
+          if grep -q 'WKWebView' Sources/Views/Player/DrivePlayerView.swift; then
+            echo "ERRO: player web antigo voltou para a build"
+            exit 1
+          fi
+
       - name: Empacotar IPA
         run: |
           set -e
-          rm -rf Payload Keplerae-1.3-unsigned.ipa
+          rm -rf Payload Keplerae-1.4-unsigned.ipa
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/Keplerae.app
-          zip -qry Keplerae-1.3-unsigned.ipa Payload
-          ls -lh Keplerae-1.3-unsigned.ipa
+          zip -qry Keplerae-1.4-unsigned.ipa Payload
+          ls -lh Keplerae-1.4-unsigned.ipa
 
       - name: Enviar IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Keplerae-1.3-unsigned-IPA
-          path: Keplerae-1.3-unsigned.ipa
+          name: Keplerae-1.4-unsigned-IPA
+          path: Keplerae-1.4-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
 
@@ -121,7 +130,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Keplerae-1.3-build-log
+          name: Keplerae-1.4-build-log
           path: build.log
           if-no-files-found: ignore
           retention-days: 14
