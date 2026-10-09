@@ -111,69 +111,73 @@ private struct BottomNavigation: View {
     @Binding var showProfile: Bool
     let intensity: Double
     let onReselect: (MainDestination) -> Void
-    @Namespace private var glassNamespace
 
     var body: some View {
-        GlassEffectContainer(spacing: 6) {
-            HStack(spacing: 2) {
-                ForEach(MainDestination.allCases) { destination in
-                    Button {
-                        if selection == destination {
-                            onReselect(destination)
-                        } else {
-                            withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
-                                selection = destination
-                            }
-                        }
-                    } label: {
-                        ZStack {
-                            if selection == destination {
-                                Capsule(style: .continuous)
-                                    .fill(.clear)
-                                    .glassEffect(.regular.interactive(), in: Capsule(style: .continuous))
-                                    .glassEffectID("active-tab", in: glassNamespace)
-                                    .padding(.horizontal, 2)
-                                    .padding(.vertical, 1)
-                            }
-
-                            VStack(spacing: 2) {
-                                Image(systemName: selection == destination ? destination.selectedIcon : destination.icon)
-                                    .font(.system(size: 19, weight: .semibold))
-                                    .contentTransition(.symbolEffect(.replace))
-                                Text(destination.title)
-                                    .font(.system(size: 9.2, weight: .medium))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                            }
-                            .foregroundStyle(selection == destination ? Color.accentColor : .primary)
-                            .frame(maxWidth: .infinity, minHeight: 50)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-
+        HStack(spacing: 2) {
+            ForEach(MainDestination.allCases) { destination in
                 Button {
-                    showProfile = true
+                    if selection == destination {
+                        onReselect(destination)
+                    } else {
+                        withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
+                            selection = destination
+                        }
+                    }
                 } label: {
-                    AvatarView(photoURL: auth.photoURL)
-                        .frame(width: 38, height: 38)
-                        .padding(.horizontal, 5)
-                        .frame(minHeight: 50)
-                        .contentShape(Rectangle())
-                        .accessibilityLabel("Abrir perfil e configurações")
+                    ZStack {
+                        if selection == destination {
+                            Capsule(style: .continuous)
+                                .fill(Color.accentColor.opacity(0.10 + 0.05 * intensity))
+                                .overlay {
+                                    Capsule(style: .continuous)
+                                        .stroke(Color.white.opacity(0.16 + 0.16 * intensity), lineWidth: 0.7)
+                                }
+                                .padding(.horizontal, 2)
+                                .padding(.vertical, 2)
+                                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                        }
+
+                        VStack(spacing: 2) {
+                            Image(systemName: selection == destination ? destination.selectedIcon : destination.icon)
+                                .font(.system(size: 19, weight: .semibold))
+                                .contentTransition(.symbolEffect(.replace))
+                            Text(destination.title)
+                                .font(.system(size: 9.2, weight: .medium))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .foregroundStyle(selection == destination ? Color.accentColor : .primary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 7)
-            .padding(.vertical, 5)
-            .glassEffect(.regular.interactive(), in: Capsule(style: .continuous))
-            .overlay {
-                Capsule(style: .continuous)
-                    .stroke(Color.white.opacity(0.10 + 0.20 * intensity), lineWidth: 0.8)
-                    .allowsHitTesting(false)
+
+            Button {
+                showProfile = true
+            } label: {
+                AvatarView(photoURL: auth.photoURL)
+                    .frame(width: 38, height: 38)
+                    .padding(.horizontal, 5)
+                    .frame(height: 50)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel("Abrir perfil e configurações")
             }
+            .buttonStyle(.plain)
         }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
+        .frame(height: 62)
+        .glassEffect(.regular.interactive(), in: Capsule(style: .continuous))
+        .overlay {
+            Capsule(style: .continuous)
+                .stroke(Color.white.opacity(0.10 + 0.20 * intensity), lineWidth: 0.8)
+                .allowsHitTesting(false)
+        }
+        .shadow(color: .black.opacity(0.08), radius: 12, y: 5)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
