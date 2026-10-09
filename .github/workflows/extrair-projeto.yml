@@ -1,1 +1,65 @@
-a
+name: Extrair projeto iOS automaticamente
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extrair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Extrair ZIP e organizar pastas
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path, PurePosixPath
+          from zipfile import ZipFile
+          import shutil
+
+          root = Path.cwd()
+          preferred = root / 'Keplermadoxios-v1.0-source.zip'
+          fallback = root / 'Keplermadoxios-bootstrap.zip'
+          source = preferred if preferred.is_file() else fallback
+          if not source.is_file():
+              raise SystemExit('ERRO: envie Keplermadoxios-v1.0-source.zip para a raiz do repositório.')
+          print('Extraindo:', source.name)
+          with ZipFile(source) as archive:
+              entries = [i for i in archive.infolist() if not i.is_dir()]
+              names = [PurePosixPath(i.filename).parts for i in entries]
+              wrapper = names[0][0] if names and all(len(p) > 1 and p[0] == names[0][0] for p in names) else None
+              count = 0
+              for item in entries:
+                  parts = PurePosixPath(item.filename).parts
+                  if wrapper:
+                      parts = parts[1:]
+                  if not parts or any(p in ('', '.', '..') for p in parts):
+                      raise SystemExit('Caminho inseguro no ZIP: ' + item.filename)
+                  if parts[0] == '.git':
+                      raise SystemExit('ZIP contém pasta .git inesperada')
+                  dest = root.joinpath(*parts)
+                  dest.parent.mkdir(parents=True, exist_ok=True)
+                  with archive.open(item) as src, dest.open('wb') as dst:
+                      shutil.copyfileobj(src, dst)
+                  count += 1
+          print(f'Extraídos {count} arquivos.')
+          PY
+
+      - name: Publicar arquivos extraídos na main
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Nenhuma alteração para publicar.'
+          else
+            git commit -m "Extrair e organizar projeto iOS"
+            git push origin HEAD:main
+          fi
