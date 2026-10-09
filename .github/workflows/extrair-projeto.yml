@@ -9,6 +9,7 @@ permissions:
 jobs:
   extrair:
     runs-on: ubuntu-latest
+
     steps:
       - name: Baixar repositório
         uses: actions/checkout@v4
@@ -22,36 +23,70 @@ jobs:
           from pathlib import Path, PurePosixPath
           from zipfile import ZipFile
           import shutil
+          import re
 
           root = Path.cwd()
-          preferred = root / 'Keplermadoxios-v1.0-source.zip'
-          fallback = root / 'Keplermadoxios-bootstrap.zip'
-          source = preferred if preferred.is_file() else fallback
-          if not source.is_file():
-              raise SystemExit('ERRO: envie Keplermadoxios-v1.0-source.zip para a raiz do repositório.')
 
-          # O token automático do Actions não pode criar outro arquivo de workflow.
-          # Esse arquivo será enviado manualmente depois da extração.
-          skip_paths = {PurePosixPath('.github/workflows/build-ipa.yml')}
+          # Aceita automaticamente versões como:
+          # Keplermadoxios-v1.0-source.zip
+          # Keplermadoxios-v1.1-source.zip
+          # Keplermadoxios-v1.2-source.zip
+          candidates = list(root.glob('Keplermadoxios-v*-source.zip'))
 
-          print('Extraindo:', source.name)
+          def version_key(path: Path):
+              match = re.search(r'-v(\d+(?:\.\d+)*)-source\.zip$', path.name)
+              if not match:
+                  return ()
+              return tuple(int(part) for part in match.group(1).split('.'))
+
+          if candidates:
+              source = max(candidates, key=version_key)
+          else:
+              fallback = root / 'Keplermadoxios-bootstrap.zip'
+              source = fallback if fallback.is_file() else None
+
+          if source is None or not source.is_file():
+              raise SystemExit(
+                  'ERRO: envie um arquivo Keplermadoxios-vX.Y-source.zip '
+                  'para a raiz do repositório.'
+              )
+
+          # O token automático do Actions não deve sobrescrever outro workflow.
+          skip_paths = {
+              PurePosixPath('.github/workflows/build-ipa.yml'),
+              PurePosixPath('.github/workflows/extrair-projeto.yml'),
+          }
+
+          print('ZIP selecionado:', source.name)
+
           with ZipFile(source) as archive:
               entries = [i for i in archive.infolist() if not i.is_dir()]
               names = [PurePosixPath(i.filename).parts for i in entries]
-              wrapper = names[0][0] if names and all(len(p) > 1 and p[0] == names[0][0] for p in names) else None
+
+              wrapper = (
+                  names[0][0]
+                  if names
+                  and all(len(parts) > 1 and parts[0] == names[0][0] for parts in names)
+                  else None
+              )
+
               count = 0
               skipped = 0
 
               for item in entries:
                   parts = PurePosixPath(item.filename).parts
+
                   if wrapper:
                       parts = parts[1:]
+
                   if not parts or any(p in ('', '.', '..') for p in parts):
                       raise SystemExit('Caminho inseguro no ZIP: ' + item.filename)
+
                   if parts[0] == '.git':
                       raise SystemExit('ZIP contém pasta .git inesperada')
 
                   relative = PurePosixPath(*parts)
+
                   if relative in skip_paths:
                       print('Ignorando workflow protegido:', relative)
                       skipped += 1
@@ -59,11 +94,13 @@ jobs:
 
                   dest = root.joinpath(*parts)
                   dest.parent.mkdir(parents=True, exist_ok=True)
+
                   with archive.open(item) as src, dest.open('wb') as dst:
                       shutil.copyfileobj(src, dst)
+
                   count += 1
 
-          print(f'Extraídos {count} arquivos; {skipped} workflow protegido ignorado.')
+          print(f'Extraídos {count} arquivos; {skipped} workflows protegidos ignorados.')
           PY
 
       - name: Publicar arquivos extraídos na main
@@ -71,9 +108,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add -A
+
           if git diff --cached --quiet; then
-            echo 'Nenhuma alteração para publicar.'
+            echo "Nenhuma alteração para publicar."
           else
             git commit -m "Extrair e organizar projeto iOS"
             git push origin HEAD:main
