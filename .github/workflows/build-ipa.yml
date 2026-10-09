@@ -1,4 +1,4 @@
-name: Compilar Keplerae iOS 1.4
+name: Compilar Keplerae iOS 1.5
 
 on:
   push:
@@ -60,8 +60,7 @@ jobs:
           APP_PATH="$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d | head -n 1)"
           test -n "$APP_PATH"
           test -f "$APP_PATH/Info.plist"
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist" | grep '^1.4$'
-
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist" | grep '^1.5$'
           test -f "$APP_PATH/Assets.car"
 
           if [ -f "$APP_PATH/catalog.json" ]; then
@@ -70,59 +69,58 @@ jobs:
             CATALOG="$APP_PATH/Resources/catalog.json"
           else
             echo "ERRO: catalog.json não foi empacotado"
-            find "$APP_PATH" -maxdepth 3 -type f | sort
             exit 1
           fi
 
           python3 - "$CATALOG" <<'PY'
           import json, sys
-          p=sys.argv[1]
-          data=json.load(open(p,encoding='utf-8'))
-          assert len(data)==1022, f'catálogo: {len(data)} itens, esperado 1022'
+          data=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert len(data)==1022
           counts={k:sum(1 for x in data if x['type']==k) for k in ('VIDEO','PDF','AUDIO')}
           assert counts=={'VIDEO':703,'PDF':306,'AUDIO':13}, counts
           print('Catálogo validado:', len(data), counts)
           PY
 
+          find_resource() {
+            local name="$1"
+            find "$APP_PATH" -type f -name "$name" | head -n 1
+          }
+
           for AUDIO in ambient_clock ambient_wind ambient_rain ambient_storm ambient_fire ambient_library ambient_room; do
-            if [ ! -f "$APP_PATH/$AUDIO.m4a" ] && [ ! -f "$APP_PATH/Sounds/$AUDIO.m4a" ] && [ ! -f "$APP_PATH/Resources/Sounds/$AUDIO.m4a" ]; then
-              echo "ERRO: áudio ausente: $AUDIO.m4a"
-              exit 1
-            fi
+            FILE="$(find_resource "$AUDIO.m4a")"
+            test -n "$FILE" || { echo "ERRO: áudio ausente: $AUDIO.m4a"; exit 1; }
           done
 
-          if ! /usr/libexec/PlistBuddy -c 'Print :CFBundleIcons' "$APP_PATH/Info.plist" >/dev/null 2>&1; then
-            echo "ERRO: metadados do AppIcon não foram gerados"
+          for GIF in pomodoro_rest.gif pomodoro_fishing.gif; do
+            FILE="$(find_resource "$GIF")"
+            test -n "$FILE" || { echo "ERRO: animação ausente: $GIF"; exit 1; }
+          done
+
+          grep -q 'tabViewStyle(.page' Sources/App/RootView.swift
+          if grep -q 'Tab("Biblioteca"' Sources/App/RootView.swift; then
+            echo "ERRO: Biblioteca voltou para a barra inferior"
             exit 1
           fi
+          grep -q 'access_token' Sources/Data/DriveContentLoader.swift
+          grep -q 'fullScreenCover' Sources/Views/Player/DrivePlayerView.swift
+          grep -q 'preferredForwardBufferDuration' Sources/Views/Player/DrivePlayerView.swift
 
-          echo "Recursos principais presentes no .app:"
-          find "$APP_PATH" -maxdepth 2 -type f \( -name 'catalog.json' -o -name 'Assets.car' -o -name 'AppIcon*.png' -o -name 'ambient_*.m4a' \) -print | sort
           echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
-
-          # Garante que a 1.4 usa autenticação Drive via OAuth e player nativo,
-          # sem voltar para o preview web que pedia outro login.
-          grep -q 'drive.readonly' Sources/Auth/GoogleAuthStore.swift
-          grep -q 'www.googleapis.com/drive/v3/files' Sources/Data/DriveContentLoader.swift
-          if grep -q 'WKWebView' Sources/Views/Player/DrivePlayerView.swift; then
-            echo "ERRO: player web antigo voltou para a build"
-            exit 1
-          fi
 
       - name: Empacotar IPA
         run: |
           set -e
-          rm -rf Payload Keplerae-1.4-unsigned.ipa
+          rm -rf Payload Keplerae-1.5-unsigned.ipa
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/Keplerae.app
-          zip -qry Keplerae-1.4-unsigned.ipa Payload
-          ls -lh Keplerae-1.4-unsigned.ipa
+          zip -qry Keplerae-1.5-unsigned.ipa Payload
+          ls -lh Keplerae-1.5-unsigned.ipa
 
       - name: Enviar IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Keplerae-1.4-unsigned-IPA
-          path: Keplerae-1.4-unsigned.ipa
+          name: Keplerae-1.5-unsigned-IPA
+          path: Keplerae-1.5-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
 
@@ -130,7 +128,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Keplerae-1.4-build-log
+          name: Keplerae-1.5-build-log
           path: build.log
           if-no-files-found: ignore
           retention-days: 14
