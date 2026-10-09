@@ -1,12 +1,27 @@
 import SwiftUI
 
+enum AmbientBackgroundStyle {
+    case standard, welcome, focus, library
+}
+
 struct AmbientBackground: View {
+    var style: AmbientBackgroundStyle = .standard
+
+    private var accents: [Color] {
+        switch style {
+        case .standard: return [.blue, .purple, .pink]
+        case .welcome: return [.cyan, .indigo, .pink]
+        case .focus: return [.purple, .cyan, .indigo]
+        case .library: return [.mint, .cyan, .blue]
+        }
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(
                 colors: [
                     Color(uiColor: .systemBackground),
-                    Color(uiColor: .secondarySystemBackground),
+                    Color(uiColor: .secondarySystemBackground).opacity(0.92),
                     Color(uiColor: .systemBackground)
                 ],
                 startPoint: .topLeading,
@@ -14,16 +29,22 @@ struct AmbientBackground: View {
             )
 
             Circle()
-                .fill(.blue.opacity(0.10))
-                .frame(width: 320, height: 320)
-                .blur(radius: 80)
-                .offset(x: -150, y: -260)
+                .fill(accents[0].opacity(0.14))
+                .frame(width: 340, height: 340)
+                .blur(radius: 90)
+                .offset(x: -155, y: -285)
 
             Circle()
-                .fill(.purple.opacity(0.09))
+                .fill(accents[1].opacity(0.11))
                 .frame(width: 300, height: 300)
                 .blur(radius: 90)
-                .offset(x: 160, y: 300)
+                .offset(x: 175, y: 90)
+
+            Circle()
+                .fill(accents[2].opacity(0.08))
+                .frame(width: 330, height: 330)
+                .blur(radius: 105)
+                .offset(x: 80, y: 390)
         }
         .ignoresSafeArea()
     }

@@ -3,6 +3,10 @@ options:
   bundleIdPrefix: com.aistudio
   deploymentTarget:
     iOS: "27.0"
+packages:
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    exactVersion: 10.0.0
 settings:
   base:
     SWIFT_VERSION: 6.0
@@ -14,16 +18,19 @@ targets:
       - Sources
     resources:
       - Resources
+    dependencies:
+      - package: GoogleSignIn
+        products:
+          - GoogleSignIn
+          - GoogleSignInSwift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.aistudio.keplerae.stdy.ios
         PRODUCT_NAME: Keplerae
-        MARKETING_VERSION: 1.1
-        CURRENT_PROJECT_VERSION: 2
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: "Kepleræ"
-        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        MARKETING_VERSION: 1.2
+        CURRENT_PROJECT_VERSION: 3
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Resources/Info.plist
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGN_STYLE: Automatic
         SUPPORTS_MACCATALYST: NO
