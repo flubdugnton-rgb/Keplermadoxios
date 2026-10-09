@@ -15,7 +15,8 @@ final class GoogleAuthStore: ObservableObject {
     private let googleCanceledErrorCode = -5
 
     init() {
-        if let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String, !clientID.isEmpty {
+        if let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
+           !clientID.isEmpty {
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
         }
         restorePreviousSignIn()
@@ -37,15 +38,18 @@ final class GoogleAuthStore: ObservableObject {
                     hint: nil,
                     additionalScopes: [driveFileScope]
                 )
+
                 apply(result.user)
                 isLoading = false
             } catch {
                 isLoading = false
+
                 let nsError = error as NSError
                 if nsError.domain == kGIDSignInErrorDomain,
                    nsError.code == googleCanceledErrorCode {
                     return
                 }
+
                 errorMessage = error.localizedDescription
             }
         }
@@ -53,10 +57,12 @@ final class GoogleAuthStore: ObservableObject {
 
     func signOut() {
         GIDSignIn.sharedInstance.signOut()
+
         displayName = ""
         email = ""
         photoURL = ""
         isSignedIn = false
+
         UserDefaults.standard.removeObject(forKey: "googleDisplayName")
         UserDefaults.standard.removeObject(forKey: "googleEmail")
         UserDefaults.standard.removeObject(forKey: "googlePhotoURL")
@@ -68,38 +74,69 @@ final class GoogleAuthStore: ObservableObject {
 
     private func restorePreviousSignIn() {
         isLoading = true
+
         GIDSignIn.sharedInstance.restorePreviousSignIn { [weak self] user, _ in
-            Task { @MainActor in
+            let restoredName = user?.profile?.name ?? ""
+            let restoredEmail = user?.profile?.email ?? ""
+            let restoredPhotoURL = user?.profile?.imageURL(withDimension: 320)?.absoluteString ?? ""
+            let restoredSignedIn = user != nil
+
+            Task { @MainActor [weak self] in
                 guard let self else { return }
-                if let user {
-                    self.apply(user)
+
+                if restoredSignedIn {
+                    self.applyProfile(
+                        name: restoredName,
+                        email: restoredEmail,
+                        photoURL: restoredPhotoURL
+                    )
                 } else {
                     self.displayName = UserDefaults.standard.string(forKey: "googleDisplayName") ?? ""
                     self.email = UserDefaults.standard.string(forKey: "googleEmail") ?? ""
                     self.photoURL = UserDefaults.standard.string(forKey: "googlePhotoURL") ?? ""
                     self.isSignedIn = false
                 }
+
                 self.isLoading = false
             }
         }
     }
 
     private func apply(_ user: GIDGoogleUser) {
-        let profile = user.profile
-        displayName = profile?.name ?? ""
-        email = profile?.email ?? ""
-        photoURL = profile?.imageURL(withDimension: 320)?.absoluteString ?? ""
+        applyProfile(
+            name: user.profile?.name ?? "",
+            email: user.profile?.email ?? "",
+            photoURL: user.profile?.imageURL(withDimension: 320)?.absoluteString ?? ""
+        )
+    }
+
+    private func applyProfile(name: String, email: String, photoURL: String) {
+        displayName = name
+        self.email = email
+        self.photoURL = photoURL
         isSignedIn = true
+
         UserDefaults.standard.set(displayName, forKey: "googleDisplayName")
-        UserDefaults.standard.set(email, forKey: "googleEmail")
-        UserDefaults.standard.set(photoURL, forKey: "googlePhotoURL")
+        UserDefaults.standard.set(self.email, forKey: "googleEmail")
+        UserDefaults.standard.set(self.photoURL, forKey: "googlePhotoURL")
     }
 
     private static func rootViewController() -> UIViewController? {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        guard let root = scenes.flatMap({ $0.windows }).first(where: { $0.isKeyWindow })?.rootViewController else { return nil }
+
+        guard let root = scenes
+            .flatMap({ $0.windows })
+            .first(where: { $0.isKeyWindow })?
+            .rootViewController
+        else {
+            return nil
+        }
+
         var top = root
-        while let presented = top.presentedViewController { top = presented }
+        while let presented = top.presentedViewController {
+            top = presented
+        }
+
         return top
     }
 }
