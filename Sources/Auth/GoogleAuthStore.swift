@@ -12,6 +12,7 @@ final class GoogleAuthStore: ObservableObject {
     @Published var errorMessage: String?
 
     private let driveFileScope = "https://www.googleapis.com/auth/drive.file"
+    private let googleCanceledErrorCode = -5
 
     init() {
         if let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String, !clientID.isEmpty {
@@ -42,7 +43,7 @@ final class GoogleAuthStore: ObservableObject {
                 isLoading = false
                 let nsError = error as NSError
                 if nsError.domain == kGIDSignInErrorDomain,
-                   nsError.code == GIDSignInErrorCode.canceled.rawValue {
+                   nsError.code == googleCanceledErrorCode {
                     return
                 }
                 errorMessage = error.localizedDescription
