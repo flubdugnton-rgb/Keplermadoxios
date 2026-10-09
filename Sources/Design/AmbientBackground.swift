@@ -21,30 +21,33 @@ struct AmbientBackground: View {
             LinearGradient(
                 colors: [
                     Color(uiColor: .systemBackground),
-                    Color(uiColor: .secondarySystemBackground).opacity(0.92),
+                    Color(uiColor: .secondarySystemBackground).opacity(0.78),
                     Color(uiColor: .systemBackground)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
-            Circle()
-                .fill(accents[0].opacity(0.14))
-                .frame(width: 340, height: 340)
-                .blur(radius: 90)
-                .offset(x: -155, y: -285)
+            RadialGradient(
+                colors: [accents[0].opacity(0.20), .clear],
+                center: .topLeading,
+                startRadius: 10,
+                endRadius: 390
+            )
 
-            Circle()
-                .fill(accents[1].opacity(0.11))
-                .frame(width: 300, height: 300)
-                .blur(radius: 90)
-                .offset(x: 175, y: 90)
+            RadialGradient(
+                colors: [accents[1].opacity(0.14), .clear],
+                center: .trailing,
+                startRadius: 8,
+                endRadius: 350
+            )
 
-            Circle()
-                .fill(accents[2].opacity(0.08))
-                .frame(width: 330, height: 330)
-                .blur(radius: 105)
-                .offset(x: 80, y: 390)
+            RadialGradient(
+                colors: [accents[2].opacity(0.10), .clear],
+                center: .bottom,
+                startRadius: 8,
+                endRadius: 380
+            )
         }
         .ignoresSafeArea()
     }

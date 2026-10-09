@@ -24,8 +24,8 @@ struct KepleraeGlassModifier: ViewModifier {
             }
             .shadow(
                 color: Color.black.opacity(0.03 + (0.11 * normalized)),
-                radius: 4 + (16 * normalized),
-                y: 2 + (7 * normalized)
+                radius: 2 + (7 * normalized),
+                y: 1 + (3 * normalized)
             )
     }
 }

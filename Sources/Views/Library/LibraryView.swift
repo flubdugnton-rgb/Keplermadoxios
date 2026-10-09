@@ -18,6 +18,14 @@ struct LibraryView: View {
                                 .font(.largeTitle.bold())
                             Text("Aulas, PDFs e áudios do seu catálogo.")
                                 .foregroundStyle(.secondary)
+                            Text("\(catalog.items.count) materiais · \(catalog.count(for: .lesson)) aulas · \(catalog.count(for: .pdf)) PDFs · \(catalog.count(for: .audio)) áudios")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            if let error = catalog.loadError {
+                                Label(error, systemImage: "exclamationmark.triangle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
                         }
 
                         ForEach(catalog.subjects) { subject in
@@ -31,7 +39,7 @@ struct LibraryView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 24)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 118)
                 }
                 .scrollIndicators(.hidden)
             }

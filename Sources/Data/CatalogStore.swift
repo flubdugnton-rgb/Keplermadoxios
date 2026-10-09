@@ -2,6 +2,8 @@ import Foundation
 
 @MainActor
 final class CatalogStore: ObservableObject {
+    static let expectedTotal = 1022
+
     @Published private(set) var subjects: [Subject] = [
         Subject(id: "fisioterapia", title: "Fisioterapia", subtitle: "HU Brasil · módulos e simulados", icon: "figure.walk", monogram: "F"),
         Subject(id: "portugues", title: "Português", subtitle: "Gramática e interpretação", icon: "text.book.closed.fill", monogram: "P"),
@@ -14,7 +16,9 @@ final class CatalogStore: ObservableObject {
     @Published private(set) var items: [StudyItem] = []
     @Published private(set) var loadError: String?
 
-    init() { loadBundledCatalog() }
+    init() {
+        loadBundledCatalog()
+    }
 
     func items(for subject: Subject, type: StudyContentType? = nil, path: [String] = []) -> [StudyItem] {
         items.filter { item in
@@ -36,17 +40,33 @@ final class CatalogStore: ObservableObject {
         return Array(Set(names)).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
 
-    func count(for subject: Subject) -> Int { items.filter { $0.subjectID == subject.id }.count }
+    func count(for subject: Subject) -> Int {
+        items.filter { $0.subjectID == subject.id }.count
+    }
+
+    func count(for type: StudyContentType) -> Int {
+        items.filter { $0.type == type }.count
+    }
 
     private func loadBundledCatalog() {
-        guard let url = Bundle.main.url(forResource: "catalog", withExtension: "json") else {
-            loadError = "O catálogo do Android não foi incluído no aplicativo."
+        let url = Bundle.main.url(forResource: "catalog", withExtension: "json")
+            ?? Bundle.main.url(forResource: "catalog", withExtension: "json", subdirectory: "Resources")
+
+        guard let url else {
+            loadError = "Catálogo não encontrado no pacote do aplicativo."
             return
         }
+
         do {
             let data = try Data(contentsOf: url)
-            items = try JSONDecoder().decode([StudyItem].self, from: data)
-            loadError = nil
+            let decoded = try JSONDecoder().decode([StudyItem].self, from: data)
+            items = decoded
+
+            if decoded.count == Self.expectedTotal {
+                loadError = nil
+            } else {
+                loadError = "Catálogo carregado parcialmente: \(decoded.count) de \(Self.expectedTotal) materiais."
+            }
         } catch {
             loadError = "Não foi possível carregar o catálogo: \(error.localizedDescription)"
         }

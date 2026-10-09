@@ -5,6 +5,7 @@ struct HomeView: View {
     @EnvironmentObject private var studyState: StudyStateStore
     @EnvironmentObject private var auth: GoogleAuthStore
     @AppStorage("glassIntensityPercent") private var glassIntensityPercent = 85
+    let resetID: UUID
     let onOpenSubjects: () -> Void
 
     private var intensity: Double { Double(glassIntensityPercent) / 100 }
@@ -30,12 +31,13 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 24)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 118)
                 }
                 .scrollIndicators(.hidden)
             }
             .toolbar(.hidden, for: .navigationBar)
         }
+        .id(resetID)
     }
 
     private var header: some View {
@@ -51,9 +53,9 @@ struct HomeView: View {
             Image("KepleraeLogo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 52, height: 52)
-                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-                .shadow(color: .black.opacity(0.10), radius: 10, y: 5)
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+                .shadow(color: .blue.opacity(0.16), radius: 12, y: 5)
         }
     }
 
@@ -67,8 +69,16 @@ struct HomeView: View {
                     .font(.headline.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
-            Text("\(completedCount) de \(catalog.items.count) materiais concluídos")
-                .foregroundStyle(.secondary)
+
+            if let loadError = catalog.loadError {
+                Label(loadError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            } else {
+                Text("\(completedCount) de \(catalog.items.count) materiais concluídos")
+                    .foregroundStyle(.secondary)
+            }
+
             ProgressView(value: progress)
                 .tint(.cyan)
 
@@ -81,13 +91,13 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 46)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .buttonBorderShape(.capsule)
             }
         }
         .padding(20)
         .background(
-            LinearGradient(colors: [.cyan.opacity(0.15), .blue.opacity(0.08), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
+            LinearGradient(colors: [.cyan.opacity(0.16), .blue.opacity(0.09), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
             in: RoundedRectangle(cornerRadius: 30, style: .continuous)
         )
         .kepleraeGlass(intensity: intensity, cornerRadius: 30, interactive: false)

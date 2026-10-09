@@ -3,23 +3,39 @@ import Foundation
 
 @MainActor
 final class AmbientSoundPlayer: ObservableObject {
+    @Published private(set) var isPlaying = false
+    @Published private(set) var lastError: String?
+
     private var player: AVAudioPlayer?
 
     func play(_ sound: AmbientSound, volume: Double) {
         stop()
-        guard sound != .none,
-              let url = Bundle.main.url(forResource: sound.resourceName, withExtension: "m4a", subdirectory: "Sounds") else { return }
+        guard sound != .none else { return }
+
+        let url = Bundle.main.url(forResource: sound.resourceName, withExtension: "m4a")
+            ?? Bundle.main.url(forResource: sound.resourceName, withExtension: "m4a", subdirectory: "Sounds")
+            ?? Bundle.main.url(forResource: sound.resourceName, withExtension: "m4a", subdirectory: "Resources/Sounds")
+
+        guard let url else {
+            lastError = "O áudio \(sound.title) não foi encontrado no aplicativo."
+            return
+        }
+
         do {
             try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
+
             let player = try AVAudioPlayer(contentsOf: url)
             player.numberOfLoops = -1
             player.volume = Float(min(max(volume, 0), 1))
             player.prepareToPlay()
-            player.play()
+            isPlaying = player.play()
             self.player = player
+            lastError = isPlaying ? nil : "Não foi possível iniciar \(sound.title)."
         } catch {
             self.player = nil
+            isPlaying = false
+            lastError = error.localizedDescription
         }
     }
 
@@ -30,6 +46,7 @@ final class AmbientSoundPlayer: ObservableObject {
     func stop() {
         player?.stop()
         player = nil
+        isPlaying = false
     }
 }
 

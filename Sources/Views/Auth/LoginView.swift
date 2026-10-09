@@ -4,8 +4,8 @@ import SwiftUI
 struct LoginView: View {
     @EnvironmentObject private var auth: GoogleAuthStore
     @AppStorage("glassIntensityPercent") private var glassIntensityPercent = 85
-    @State private var floating = false
-    @State private var appeared = false
+    @State private var animateGlow = false
+    @State private var twinkle = false
 
     private var intensity: Double { Double(glassIntensityPercent) / 100 }
 
@@ -13,80 +13,101 @@ struct LoginView: View {
         ZStack {
             AmbientBackground(style: .welcome)
 
-            VStack(spacing: 26) {
-                Spacer(minLength: 48)
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        Spacer(minLength: max(34, proxy.size.height * 0.075))
 
-                ZStack {
-                    Circle()
-                        .fill(.white.opacity(0.18))
-                        .frame(width: 222, height: 222)
-                        .kepleraeGlass(intensity: intensity, cornerRadius: 111, interactive: false)
+                        brandBlock
 
-                    Image("KepleraeLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 176, height: 176)
-                        .clipShape(RoundedRectangle(cornerRadius: 42, style: .continuous))
-                        .shadow(color: .black.opacity(0.12), radius: 22, y: 12)
-                }
-                .offset(y: floating ? -6 : 6)
-                .animation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true), value: floating)
+                        VStack(spacing: 16) {
+                            GoogleSignInButton(scheme: .light, style: .wide, state: auth.isLoading ? .disabled : .normal) {
+                                auth.signIn()
+                            }
+                            .frame(height: 52)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .disabled(auth.isLoading)
 
-                VStack(spacing: 7) {
-                    Text("Kepleræ")
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
-                    Text("Seu espaço de estudos, do seu jeito.")
-                        .font(.title3.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
+                            if auth.isLoading {
+                                ProgressView("Conectando com Google…")
+                                    .font(.subheadline)
+                            }
 
-                VStack(spacing: 14) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 30, style: .continuous)
-                            .fill(.white.opacity(0.10))
-                            .frame(height: 64)
-                            .kepleraeGlass(intensity: intensity, cornerRadius: 30, interactive: true)
+                            if let error = auth.errorMessage, !error.isEmpty {
+                                Label(error, systemImage: "exclamationmark.triangle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                                    .multilineTextAlignment(.center)
+                            }
 
-                        GoogleSignInButton {
-                            auth.signIn()
+                            HStack(spacing: 6) {
+                                Image(systemName: "lock.shield.fill")
+                                Text("Login oficial do Google. Sua senha nunca passa pelo Kepleræ.")
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                         }
-                        .frame(height: 50)
-                        .padding(.horizontal, 10)
-                        .disabled(auth.isLoading)
-                    }
+                        .padding(18)
+                        .frame(maxWidth: 520)
+                        .background(Color.white.opacity(0.02), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+                        .kepleraeGlass(intensity: intensity, cornerRadius: 28, interactive: false)
+                        .padding(.top, 30)
 
-                    if auth.isLoading {
-                        ProgressView("Conectando ao Google…")
-                            .font(.footnote)
-                    }
+                        Spacer(minLength: 38)
 
-                    Text("A autenticação usa o SDK oficial do Google. O Kepleræ nunca pede sua senha dentro do app.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                        Text("Kepleræ 1.3 · SwiftUI · iOS 27")
+                            .font(.caption)
+                            .foregroundStyle(.secondary.opacity(0.72))
+                            .padding(.bottom, 20)
+                    }
+                    .frame(minHeight: proxy.size.height)
+                    .padding(.horizontal, 24)
                 }
-                .padding(.horizontal, 30)
-
-                Spacer()
-
-                Text("Kepleræ 1.2 · SwiftUI · iOS 27")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .padding(.bottom, 20)
+                .scrollIndicators(.hidden)
             }
-            .opacity(appeared ? 1 : 0)
-            .scaleEffect(appeared ? 1 : 0.97)
-            .offset(y: appeared ? 0 : 16)
         }
         .onAppear {
-            floating = true
-            withAnimation(.spring(response: 0.65, dampingFraction: 0.86)) { appeared = true }
+            animateGlow = true
+            twinkle = true
         }
-        .alert("Login Google", isPresented: Binding(get: { auth.errorMessage != nil }, set: { if !$0 { auth.errorMessage = nil } })) {
-            Button("OK") { auth.errorMessage = nil }
-        } message: {
-            Text(auth.errorMessage ?? "")
+    }
+
+    private var brandBlock: some View {
+        VStack(spacing: 18) {
+            ZStack {
+                ForEach(0..<6, id: \.self) { index in
+                    Image(systemName: index.isMultiple(of: 2) ? "sparkle" : "star.fill")
+                        .font(.system(size: CGFloat(8 + (index % 3) * 3)))
+                        .foregroundStyle(index.isMultiple(of: 2) ? Color.cyan : Color.purple)
+                        .opacity(twinkle ? 0.22 + Double(index % 3) * 0.22 : 0.8)
+                        .offset(
+                            x: CGFloat([-112, -82, -48, 64, 98, 116][index]),
+                            y: CGFloat([-62, 66, -96, -82, 48, 4][index])
+                        )
+                        .animation(.easeInOut(duration: 1.2 + Double(index) * 0.18).repeatForever(autoreverses: true), value: twinkle)
+                }
+
+                Image("KepleraeLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 158, height: 158)
+                    .clipShape(RoundedRectangle(cornerRadius: 37, style: .continuous))
+                    .shadow(color: .cyan.opacity(animateGlow ? 0.28 : 0.12), radius: animateGlow ? 28 : 12, y: 9)
+                    .scaleEffect(animateGlow ? 1.015 : 0.985)
+                    .offset(y: animateGlow ? -3 : 3)
+                    .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true), value: animateGlow)
+            }
+            .frame(height: 180)
+
+            VStack(spacing: 7) {
+                Text("Kepleræ")
+                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                Text("Seu espaço de estudos, do seu jeito.")
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
     }
 }

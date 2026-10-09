@@ -1,29 +1,40 @@
-# Kepleræ iOS 1.2
+# Kepleræ iOS 1.3
 
-Versão nativa em SwiftUI para iOS 27, com identidade visual Apple e conteúdo migrado do projeto Android.
+Versão 1.3 do Kepleræ para iOS 27 em SwiftUI.
 
-## Destaques da 1.2
+## Correções principais
 
-- Login real com Google via OAuth 2.0 + PKCE usando o Client ID iOS do projeto.
-- Tela de login dedicada; sem campos manuais de e-mail/senha.
-- Perfil com nome, e-mail e foto retornados pelo Google.
-- Client ID iOS configurado para `com.aistudio.keplerae.stdy.ios`.
-- Catálogo completo com mais de 1.000 materiais e navegação por pastas.
-- Filtros Todos, Favoritos, Pendentes e Concluídos + formatos Aulas/PDFs/Áudios.
-- Estado local de favoritos, concluídos e último conteúdo aberto.
-- Home mais rica visualmente, mantendo SwiftUI/Liquid Glass em vez de copiar Material Design.
-- Pomodoro redesenhado com artes originais, animações e sons ambientes convertidos para formatos compatíveis com iOS.
-- Perfil/Ajustes com tema, Liquid Glass, Google, exportação/importação e desconectar.
-- Versão 1.2, build 3.
+- recursos agora entram de verdade no bundle do app via XcodeGen: catálogo, Assets.xcassets e áudios;
+- catálogo completo com 1.022 materiais: 703 aulas, 306 PDFs e 13 áudios;
+- ícone oficial Kepleræ aplicado ao app e à tela de login;
+- nova tela de login com composição Apple/Liquid Glass e Google Sign-In oficial;
+- barra inferior com Liquid Glass nativo, seleção interativa e morphing via `glassEffectID`;
+- tocar novamente em **Início** reinicia a NavigationStack e volta à tela principal;
+- Pomodoro com artes `PomodoroRest` e `PomodoroFishing`, movimento, estrelas e órbita animada;
+- sons ambientes empacotados e com prévia imediata nos ajustes;
+- tema claro/escuro/sistema aplicado também à folha de Perfil, sem aparência dividida;
+- animações próprias do sol e da lua ao trocar tema;
+- fundos reimplementados com gradientes radiais para reduzir custo de blur e melhorar fluidez;
+- espaçamento inferior reforçado para conteúdo não ficar escondido atrás da barra.
 
-## Google OAuth
+## Conteúdo
 
-Client ID iOS configurado no `Resources/Info.plist`:
+O `Resources/catalog.json` contém os dados consolidados das planilhas usadas no projeto:
 
-`240965240632-re20f1uta49pcuorpveqabrvii76r8o9.apps.googleusercontent.com`
+- Português: 356 materiais;
+- Profisio: 311 materiais;
+- Fisioterapia: 170 materiais;
+- SUS: 135 materiais;
+- HU Legislação: 33 materiais;
+- Matemática e Raciocínio Lógico: 17 materiais.
 
-URL scheme reverso:
+Total: **1.022** materiais.
 
-`com.googleusercontent.apps.240965240632-re20f1uta49pcuorpveqabrvii76r8o9`
+## Build
 
-O login usa o SDK oficial `GoogleSignIn-iOS` 10.0.0, que inclui suporte ao Xcode 27. O app solicita o escopo `drive.file` além do perfil básico do Google.
+- Bundle ID: `com.aistudio.keplerae.stdy.ios`
+- Versão: 1.3
+- Build: 4
+- Target mínimo: iOS 27
+- Swift 6
+- GoogleSignIn 10.0.0
