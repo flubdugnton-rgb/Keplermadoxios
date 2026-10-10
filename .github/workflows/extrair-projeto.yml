@@ -27,10 +27,6 @@ jobs:
 
           root = Path.cwd()
 
-          # Aceita automaticamente versões como:
-          # Keplermadoxios-v1.0-source.zip
-          # Keplermadoxios-v1.1-source.zip
-          # Keplermadoxios-v1.2-source.zip
           candidates = list(root.glob('Keplermadoxios-v*-source.zip'))
 
           def version_key(path: Path):
@@ -51,13 +47,20 @@ jobs:
                   'para a raiz do repositório.'
               )
 
-          # O token automático do Actions não deve sobrescrever outro workflow.
           skip_paths = {
               PurePosixPath('.github/workflows/build-ipa.yml'),
               PurePosixPath('.github/workflows/extrair-projeto.yml'),
           }
 
           print('ZIP selecionado:', source.name)
+
+          # Limpa recursos obsoletos de versões anteriores que o ZIP novo não usa.
+          # Isso evita que arquivos antigos continuem no repositório após a extração.
+          animations = root / 'Resources' / 'Animations'
+          if animations.exists():
+              for old_gif in animations.glob('*.gif'):
+                  print('Removendo animação GIF obsoleta:', old_gif.relative_to(root))
+                  old_gif.unlink()
 
           with ZipFile(source) as archive:
               entries = [i for i in archive.infolist() if not i.is_dir()]
