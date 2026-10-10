@@ -1,4 +1,4 @@
-name: Compilar Keplerae iOS 1.5
+name: Compilar Keplerae iOS 1.5.1
 
 on:
   push:
@@ -60,7 +60,7 @@ jobs:
           APP_PATH="$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d | head -n 1)"
           test -n "$APP_PATH"
           test -f "$APP_PATH/Info.plist"
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist" | grep '^1.5$'
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist" | grep '^1.5.1$'
           test -f "$APP_PATH/Assets.car"
 
           if [ -f "$APP_PATH/catalog.json" ]; then
@@ -91,36 +91,41 @@ jobs:
             test -n "$FILE" || { echo "ERRO: áudio ausente: $AUDIO.m4a"; exit 1; }
           done
 
-          for GIF in pomodoro_rest.gif pomodoro_fishing.gif; do
-            FILE="$(find_resource "$GIF")"
-            test -n "$FILE" || { echo "ERRO: animação ausente: $GIF"; exit 1; }
+          for ANIMATION in pomodoro_rest.png pomodoro_fishing.png; do
+            FILE="$(find_resource "$ANIMATION")"
+            test -n "$FILE" || { echo "ERRO: animação ausente: $ANIMATION"; exit 1; }
           done
 
           grep -q 'tabViewStyle(.page' Sources/App/RootView.swift
-          if grep -q 'Tab("Biblioteca"' Sources/App/RootView.swift; then
+          grep -q 'glassEffect(.regular.interactive()' Sources/App/RootView.swift
+          if grep -q 'case subjects' Sources/App/RootView.swift; then
             echo "ERRO: Biblioteca voltou para a barra inferior"
             exit 1
           fi
-          grep -q 'access_token' Sources/Data/DriveContentLoader.swift
+          grep -q 'AVURLAssetHTTPHeaderFieldsKey' Sources/Views/Player/DrivePlayerView.swift
+          grep -q 'Authorization' Sources/Data/DriveContentLoader.swift
           grep -q 'fullScreenCover' Sources/Views/Player/DrivePlayerView.swift
-          grep -q 'preferredForwardBufferDuration' Sources/Views/Player/DrivePlayerView.swift
+          if find Resources/Animations -name '*.gif' | grep -q .; then
+            echo "ERRO: GIF antigo voltou ao projeto"
+            exit 1
+          fi
 
           echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
 
       - name: Empacotar IPA
         run: |
           set -e
-          rm -rf Payload Keplerae-1.5-unsigned.ipa
+          rm -rf Payload Keplerae-1.5.1-unsigned.ipa
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/Keplerae.app
-          zip -qry Keplerae-1.5-unsigned.ipa Payload
-          ls -lh Keplerae-1.5-unsigned.ipa
+          zip -qry Keplerae-1.5.1-unsigned.ipa Payload
+          ls -lh Keplerae-1.5.1-unsigned.ipa
 
       - name: Enviar IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Keplerae-1.5-unsigned-IPA
-          path: Keplerae-1.5-unsigned.ipa
+          name: Keplerae-1.5.1-unsigned-IPA
+          path: Keplerae-1.5.1-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
 
@@ -128,7 +133,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Keplerae-1.5-build-log
+          name: Keplerae-1.5.1-build-log
           path: build.log
           if-no-files-found: ignore
           retention-days: 14
