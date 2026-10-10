@@ -1,4 +1,4 @@
-name: Compilar Keplerae iOS 1.5.1
+name: Compilar Keplerae iOS 1.5.2
 
 on:
   push:
@@ -60,7 +60,7 @@ jobs:
           APP_PATH="$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d | head -n 1)"
           test -n "$APP_PATH"
           test -f "$APP_PATH/Info.plist"
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist" | grep '^1.5.1$'
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist" | grep '^1.5.2$'
           test -f "$APP_PATH/Assets.car"
 
           if [ -f "$APP_PATH/catalog.json" ]; then
@@ -115,17 +115,17 @@ jobs:
       - name: Empacotar IPA
         run: |
           set -e
-          rm -rf Payload Keplerae-1.5.1-unsigned.ipa
+          rm -rf Payload Keplerae-1.5.2-unsigned.ipa
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/Keplerae.app
-          zip -qry Keplerae-1.5.1-unsigned.ipa Payload
-          ls -lh Keplerae-1.5.1-unsigned.ipa
+          zip -qry Keplerae-1.5.2-unsigned.ipa Payload
+          ls -lh Keplerae-1.5.2-unsigned.ipa
 
       - name: Enviar IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Keplerae-1.5.1-unsigned-IPA
-          path: Keplerae-1.5.1-unsigned.ipa
+          name: Keplerae-1.5.2-unsigned-IPA
+          path: Keplerae-1.5.2-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
 
@@ -133,7 +133,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Keplerae-1.5.1-build-log
+          name: Keplerae-1.5.2-build-log
           path: build.log
           if-no-files-found: ignore
           retention-days: 14
