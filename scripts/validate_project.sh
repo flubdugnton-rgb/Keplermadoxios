@@ -8,6 +8,7 @@ for path in \
   Sources/Auth/GoogleAuthStore.swift \
   Sources/Data/DriveContentLoader.swift \
   Sources/Views/Player/DrivePlayerView.swift \
+  Sources/Views/Library/StudyItemView.swift \
   Sources/Views/Components/AnimatedPNGView.swift \
   Sources/Views/Auth/LoginView.swift \
   Sources/Views/Pomodoro/PomodoroView.swift \
@@ -57,5 +58,7 @@ grep -q 'Authorization' Sources/Data/DriveContentLoader.swift
 grep -q 'AVURLAssetHTTPHeaderFieldsKey' Sources/Views/Player/DrivePlayerView.swift
 grep -q 'preferredForwardBufferDuration' Sources/Views/Player/DrivePlayerView.swift
 grep -q 'fullScreenCover' Sources/Views/Player/DrivePlayerView.swift
+grep -q 'playerHeight' Sources/Views/Library/StudyItemView.swift
+grep -q 'AmbientBackground(style: selection == .pomodoro' Sources/App/RootView.swift
 
-echo 'Estrutura Kepleræ 1.5.1 validada.'
+echo 'Estrutura Kepleræ 1.5.2 validada.'

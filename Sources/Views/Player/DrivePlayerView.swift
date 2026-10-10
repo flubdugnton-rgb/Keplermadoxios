@@ -169,9 +169,9 @@ private struct VideoStudyPlayer: View {
 
             switch state {
             case .preparing:
-                mediaOverlay(title: "Conectando ao vídeo…", subtitle: "O vídeo começa assim que o primeiro trecho chegar.")
+                mediaOverlay(title: "Conectando ao vídeo…", subtitle: "Tentando iniciar o vídeo direto do Drive antes de usar o cache.")
             case .fallback:
-                mediaOverlay(title: "Otimizando reprodução…", subtitle: "A conexão direta falhou; preparando uma cópia local em cache.")
+                mediaOverlay(title: "Otimizando reprodução…", subtitle: "Preparando uma cópia local em cache para iniciar com estabilidade.")
             case .failed(let message):
                 VStack(spacing: 10) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -220,7 +220,7 @@ private struct VideoStudyPlayer: View {
         let streamPlayer = makeAuthenticatedPlayer(stream: stream)
         player = streamPlayer
 
-        for _ in 0..<32 {
+        for _ in 0..<16 {
             guard !Task.isCancelled else { return }
             guard let item = streamPlayer.currentItem else { break }
 
@@ -343,7 +343,7 @@ private struct AudioStudyPlayer: View {
         let streamPlayer = makeAuthenticatedPlayer(stream: stream)
         player = streamPlayer
 
-        for _ in 0..<24 {
+        for _ in 0..<12 {
             guard !Task.isCancelled else { return }
             guard let item = streamPlayer.currentItem else { break }
 

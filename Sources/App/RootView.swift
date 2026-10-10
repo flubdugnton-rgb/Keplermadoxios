@@ -71,6 +71,9 @@ struct RootView: View {
 
     private var mainShell: some View {
         ZStack(alignment: .bottom) {
+            AmbientBackground(style: selection == .pomodoro ? .focus : .standard)
+                .ignoresSafeArea()
+
             TabView(selection: $selection) {
                 HomeView(resetID: homeResetID)
                     .tag(MainDestination.home)
@@ -85,6 +88,7 @@ struct RootView: View {
                     .tag(MainDestination.notes)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            .background(Color.clear)
             .animation(.snappy(duration: 0.32, extraBounce: 0.04), value: selection)
 
             KepleraeTabBar(
