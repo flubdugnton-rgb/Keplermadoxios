@@ -1,10 +1,16 @@
 import Foundation
 
+struct DriveStreamDescriptor: Equatable {
+    let url: URL
+    let accessToken: String
+    let mimeType: String
+}
+
 @MainActor
 final class DriveContentLoader: ObservableObject {
     enum PreparedContent: Equatable {
         case local(URL)
-        case stream(URL)
+        case stream(DriveStreamDescriptor)
     }
 
     enum State: Equatable {
@@ -29,12 +35,22 @@ final class DriveContentLoader: ObservableObject {
             guard !Task.isCancelled else { return }
 
             switch item.type {
-            case .lesson, .audio:
-                let url = try Self.streamingURL(fileID: item.driveFileID, accessToken: token)
-                state = .ready(.stream(url))
+            case .lesson:
+                state = .ready(.stream(try Self.streamDescriptor(
+                    fileID: item.driveFileID,
+                    accessToken: token,
+                    mimeType: "video/mp4"
+                )))
+
+            case .audio:
+                state = .ready(.stream(try Self.streamDescriptor(
+                    fileID: item.driveFileID,
+                    accessToken: token,
+                    mimeType: "audio/mpeg"
+                )))
 
             case .pdf:
-                let localURL = try await Self.downloadPDF(item: item, accessToken: token)
+                let localURL = try await Self.download(item: item, accessToken: token)
                 guard !Task.isCancelled else { return }
                 state = .ready(.local(localURL))
             }
@@ -49,26 +65,34 @@ final class DriveContentLoader: ObservableObject {
         state = .idle
     }
 
-    nonisolated private static func streamingURL(fileID: String, accessToken: String) throws -> URL {
-        guard var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files/\(fileID)") else {
+    nonisolated static func streamDescriptor(
+        fileID: String,
+        accessToken: String,
+        mimeType: String
+    ) throws -> DriveStreamDescriptor {
+        guard let encodedID = fileID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              let url = URL(string: "https://www.googleapis.com/drive/v3/files/\(encodedID)?alt=media&supportsAllDrives=true") else {
             throw DriveContentError.invalidURL
         }
-        components.queryItems = [
-            URLQueryItem(name: "alt", value: "media"),
-            URLQueryItem(name: "supportsAllDrives", value: "true"),
-            URLQueryItem(name: "access_token", value: accessToken)
-        ]
-        guard let url = components.url else { throw DriveContentError.invalidURL }
-        return url
+
+        return DriveStreamDescriptor(
+            url: url,
+            accessToken: accessToken,
+            mimeType: mimeType
+        )
     }
 
-    nonisolated private static func downloadPDF(item: StudyItem, accessToken: String) async throws -> URL {
+    /// Full-file fallback used only if AVPlayer cannot begin the authenticated range stream.
+    /// The result is cached so a material that has already fallen back opens immediately next time.
+    nonisolated static func download(item: StudyItem, accessToken: String) async throws -> URL {
         let fileManager = FileManager.default
         let directory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
             .appendingPathComponent("KepleraeDrive", isDirectory: true)
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let destination = directory.appendingPathComponent("\(item.driveFileID).pdf")
+        let ext = preferredExtension(for: item)
+        let destination = directory.appendingPathComponent("\(item.driveFileID).\(ext)")
+
         if fileManager.fileExists(atPath: destination.path),
            let values = try? destination.resourceValues(forKeys: [.fileSizeKey]),
            (values.fileSize ?? 0) > 0 {
@@ -84,16 +108,16 @@ final class DriveContentLoader: ObservableObject {
         request.httpMethod = "GET"
         request.timeoutInterval = 180
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/pdf", forHTTPHeaderField: "Accept")
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Accept")
         request.cachePolicy = .reloadRevalidatingCacheData
 
         let configuration = URLSessionConfiguration.default
         configuration.urlCache = URLCache(
             memoryCapacity: 24 * 1024 * 1024,
-            diskCapacity: 256 * 1024 * 1024
+            diskCapacity: 512 * 1024 * 1024
         )
         configuration.timeoutIntervalForRequest = 180
-        configuration.timeoutIntervalForResource = 60 * 30
+        configuration.timeoutIntervalForResource = 60 * 60
         let session = URLSession(configuration: configuration)
 
         let (temporaryURL, response) = try await session.download(for: request)
@@ -109,6 +133,17 @@ final class DriveContentLoader: ObservableObject {
         }
         try fileManager.moveItem(at: temporaryURL, to: destination)
         return destination
+    }
+
+    nonisolated private static func preferredExtension(for item: StudyItem) -> String {
+        let existing = (item.filename as NSString).pathExtension
+        if !existing.isEmpty { return existing }
+
+        switch item.type {
+        case .lesson: return "mp4"
+        case .pdf: return "pdf"
+        case .audio: return "mp3"
+        }
     }
 }
 

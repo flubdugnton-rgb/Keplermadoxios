@@ -374,11 +374,11 @@ private struct AnimatedPomodoroArtwork: View {
     var body: some View {
         ZStack {
             if active {
-                AnimatedGIFView(resourceName: "pomodoro_fishing")
+                AnimatedPNGView(resourceName: "pomodoro_fishing")
                     .id("pomodoro-fishing")
                     .transition(.opacity.combined(with: .scale(scale: 0.985)))
             } else {
-                AnimatedGIFView(resourceName: "pomodoro_rest")
+                AnimatedPNGView(resourceName: "pomodoro_rest")
                     .id("pomodoro-rest")
                     .transition(.opacity.combined(with: .scale(scale: 1.015)))
             }

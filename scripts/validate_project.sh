@@ -8,7 +8,7 @@ for path in \
   Sources/Auth/GoogleAuthStore.swift \
   Sources/Data/DriveContentLoader.swift \
   Sources/Views/Player/DrivePlayerView.swift \
-  Sources/Views/Components/AnimatedGIFView.swift \
+  Sources/Views/Components/AnimatedPNGView.swift \
   Sources/Views/Auth/LoginView.swift \
   Sources/Views/Pomodoro/PomodoroView.swift \
   Sources/Views/Questions/QuestionsView.swift \
@@ -18,8 +18,8 @@ for path in \
   Resources/Info.plist \
   Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png \
   Resources/Assets.xcassets/KepleraeLogo.imageset/keplerae_logo.png \
-  Resources/Animations/pomodoro_rest.gif \
-  Resources/Animations/pomodoro_fishing.gif \
+  Resources/Animations/pomodoro_rest.png \
+  Resources/Animations/pomodoro_fishing.png \
   Resources/Sounds/ambient_clock.m4a \
   Resources/Sounds/ambient_wind.m4a \
   Resources/Sounds/ambient_rain.m4a \
@@ -44,13 +44,18 @@ print('Catálogo validado:', len(data))
 PY
 
 grep -q 'tabViewStyle(.page' Sources/App/RootView.swift
+grep -q 'glassEffect(.regular.interactive()' Sources/App/RootView.swift
 grep -q 'Text("Perfil")' Sources/App/RootView.swift
 if grep -q 'case subjects' Sources/App/RootView.swift; then echo 'ERRO: Biblioteca ainda está na barra'; exit 1; fi
 if grep -q 'Tab("Biblioteca"' Sources/App/RootView.swift; then echo 'ERRO: Biblioteca ainda está na TabView'; exit 1; fi
-grep -q 'pomodoro_rest' Sources/Views/Pomodoro/PomodoroView.swift
-grep -q 'pomodoro_fishing' Sources/Views/Pomodoro/PomodoroView.swift
-grep -q 'access_token' Sources/Data/DriveContentLoader.swift
+
+grep -q 'AnimatedPNGView(resourceName: "pomodoro_rest")' Sources/Views/Pomodoro/PomodoroView.swift
+grep -q 'AnimatedPNGView(resourceName: "pomodoro_fishing")' Sources/Views/Pomodoro/PomodoroView.swift
+if find Resources/Animations -name '*.gif' | grep -q .; then echo 'ERRO: GIF antigo com matte preto ainda presente'; exit 1; fi
+
+grep -q 'Authorization' Sources/Data/DriveContentLoader.swift
+grep -q 'AVURLAssetHTTPHeaderFieldsKey' Sources/Views/Player/DrivePlayerView.swift
 grep -q 'preferredForwardBufferDuration' Sources/Views/Player/DrivePlayerView.swift
 grep -q 'fullScreenCover' Sources/Views/Player/DrivePlayerView.swift
 
-echo 'Estrutura Kepleræ 1.5 validada.'
+echo 'Estrutura Kepleræ 1.5.1 validada.'

@@ -45,6 +45,8 @@ struct RootView: View {
     @AppStorage("glassIntensityPercent") private var glassIntensityPercent = 85
 
     private var theme: AppTheme { AppTheme(rawValue: appThemeRaw) ?? .system }
+    private var intensity: Double { Double(glassIntensityPercent) / 100 }
+
     private var preferredScheme: ColorScheme? {
         switch theme {
         case .system: return nil
@@ -52,8 +54,6 @@ struct RootView: View {
         case .dark: return .dark
         }
     }
-
-    private var intensity: Double { Double(glassIntensityPercent) / 100 }
 
     var body: some View {
         ZStack {
@@ -70,30 +70,32 @@ struct RootView: View {
     }
 
     private var mainShell: some View {
-        TabView(selection: $selection) {
-            HomeView(resetID: homeResetID)
-                .tag(MainDestination.home)
+        ZStack(alignment: .bottom) {
+            TabView(selection: $selection) {
+                HomeView(resetID: homeResetID)
+                    .tag(MainDestination.home)
 
-            PomodoroView()
-                .tag(MainDestination.pomodoro)
+                PomodoroView()
+                    .tag(MainDestination.pomodoro)
 
-            QuestionsView()
-                .tag(MainDestination.questions)
+                QuestionsView()
+                    .tag(MainDestination.questions)
 
-            NotesView()
-                .tag(MainDestination.notes)
-        }
-        .tabViewStyle(.page(indexDisplayMode: .never))
-        .animation(.snappy(duration: 0.34, extraBounce: 0.05), value: selection)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+                NotesView()
+                    .tag(MainDestination.notes)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(.snappy(duration: 0.32, extraBounce: 0.04), value: selection)
+
             KepleraeTabBar(
                 selection: $selection,
                 showProfile: $showProfile,
                 homeResetID: $homeResetID,
                 intensity: intensity
             )
-            .padding(.horizontal, 14)
-            .padding(.bottom, 5)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 4)
+            .zIndex(20)
         }
         .sheet(isPresented: $showProfile) {
             ProfileSettingsView()
@@ -112,67 +114,85 @@ private struct KepleraeTabBar: View {
     @Namespace private var selectionNamespace
 
     var body: some View {
-        GlassEffectContainer(spacing: 4) {
-            HStack(spacing: 2) {
-                ForEach(MainDestination.allCases) { destination in
-                    Button {
-                        if destination == .home && selection == .home {
-                            homeResetID = UUID()
-                        }
-                        withAnimation(.snappy(duration: 0.32, extraBounce: 0.08)) {
-                            selection = destination
-                        }
-                    } label: {
-                        tabLabel(destination)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(destination.title)
-                }
-
+        HStack(spacing: 2) {
+            ForEach(MainDestination.allCases) { destination in
                 Button {
-                    showProfile = true
-                } label: {
-                    VStack(spacing: 2) {
-                        AvatarView(photoURL: auth.photoURL)
-                            .frame(width: 29, height: 29)
-                        Text("Perfil")
-                            .font(.system(size: 9.5, weight: .medium))
-                            .lineLimit(1)
+                    if destination == .home && selection == .home {
+                        homeResetID = UUID()
                     }
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                    .contentShape(Rectangle())
+
+                    withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
+                        selection = destination
+                    }
+                } label: {
+                    tabLabel(destination)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Perfil e ajustes")
+                .accessibilityLabel(destination.title)
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 5)
-            .frame(height: 64)
-            .glassEffect(.regular.interactive(), in: Capsule(style: .continuous))
-            .overlay {
-                Capsule(style: .continuous)
-                    .stroke(.white.opacity(0.10 + 0.16 * intensity), lineWidth: 0.7)
-                    .allowsHitTesting(false)
+
+            Button {
+                showProfile = true
+            } label: {
+                VStack(spacing: 2) {
+                    AvatarView(photoURL: auth.photoURL)
+                        .frame(width: 31, height: 31)
+                    Text("Perfil")
+                        .font(.system(size: 9.5, weight: .medium))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, minHeight: 52)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Perfil e ajustes")
         }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
+        .frame(height: 64)
+        .glassEffect(.regular.interactive(), in: Capsule(style: .continuous))
+        .overlay {
+            Capsule(style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0.42 * intensity),
+                            .white.opacity(0.08),
+                            .white.opacity(0.28 * intensity)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.9
+                )
+                .allowsHitTesting(false)
+        }
+        .shadow(color: .black.opacity(0.09), radius: 14, y: 6)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func tabLabel(_ destination: MainDestination) -> some View {
         ZStack {
             if selection == destination {
                 Capsule(style: .continuous)
-                    .fill(Color.accentColor.opacity(0.14 + 0.08 * intensity))
+                    .fill(Color.accentColor.opacity(0.10 + 0.08 * intensity))
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .stroke(.white.opacity(0.18 + 0.18 * intensity), lineWidth: 0.8)
+                    }
                     .matchedGeometryEffect(id: "selected-tab", in: selectionNamespace)
                     .padding(.horizontal, 2)
-                    .padding(.vertical, 1)
+                    .padding(.vertical, 2)
             }
 
             VStack(spacing: 2) {
                 Image(systemName: selection == destination ? destination.selectedIcon : destination.icon)
                     .font(.system(size: 19, weight: .semibold))
                     .contentTransition(.symbolEffect(.replace))
+
                 Text(destination.title)
-                    .font(.system(size: 9.5, weight: .medium))
+                    .font(.system(size: 9.4, weight: .medium))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
             }
@@ -189,10 +209,12 @@ struct AvatarView: View {
     var body: some View {
         ZStack {
             Circle().fill(.thinMaterial)
+
             if let url = URL(string: photoURL), !photoURL.isEmpty {
                 AsyncImage(url: url) { phase in
                     switch phase {
-                    case .success(let image): image.resizable().scaledToFill()
+                    case .success(let image):
+                        image.resizable().scaledToFill()
                     default:
                         Image(systemName: "person.fill")
                             .font(.system(size: 15, weight: .semibold))
@@ -204,6 +226,7 @@ struct AvatarView: View {
             }
         }
         .clipShape(Circle())
-        .overlay(Circle().stroke(.white.opacity(0.62), lineWidth: 1))
+        .overlay(Circle().stroke(.white.opacity(0.68), lineWidth: 1.1))
+        .shadow(color: .black.opacity(0.08), radius: 5, y: 2)
     }
 }

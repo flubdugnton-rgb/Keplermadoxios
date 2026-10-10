@@ -57,6 +57,7 @@ struct QuestionsView: View {
                             }
                         }
                     }.padding(20)
+                        .padding(.bottom, 96)
                 }
             }.toolbar(.hidden, for: .navigationBar)
         }
